@@ -1,0 +1,15 @@
+# train and val datasets (image directory or *.txt file with image paths)
+
+train_img: /data/blanka/DATASETS/PascalVoc/VOCdevkit/VOC2012/train/images
+val_img:  /data/blanka/DATASETS/PascalVoc/VOCdevkit/VOC2012/validation/images
+
+train_label: /data/blanka/DATASETS/PascalVoc/VOCdevkit/VOC2012/train/labels
+val_label: /data/blanka/DATASETS/PascalVoc/VOCdevkit/VOC2012/validation/labels
+
+test: /data/blanka/DATASETS/PascalVoc/VOCdevkit/VOC2012/test/images
+
+# number of classes
+nc: 20
+
+# class names
+names: ["dog", "diningtable", "chair", "person", "tvmonitor", "bottle", "sofa", "cat", "bus", "car", "aeroplane", "sheep", "bird", "pottedplant", "boat", "motorbike", "horse", "bicycle", "train", "cow"]
