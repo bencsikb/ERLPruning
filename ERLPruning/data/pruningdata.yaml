@@ -1,7 +1,0 @@
-train_pruningdata: /data/blanka/DATASETS/Pruning/training2/states
-#val_pruningdata:  /home/blanka/Datasets/PruningDataset/data3_val
-
-train_label: /data/blanka/DATASETS/Pruning/training2/labels
-#val_label:  /home/blanka/Datasets/PruningDataset/label3_val
-
-allsamples: /data/blanka/DATASETS/Pruning/samples2.pkl
