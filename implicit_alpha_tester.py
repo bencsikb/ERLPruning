@@ -10,7 +10,8 @@ import time
 import pandas as pd
 import yaml
 
-from prune_for_error import prune_network, normalize
+#from prune_for_error import prune_network, normalize
+from auto_pruning import prune_network, normalize
 from models.models import *
 from utils.layers import *
 from test import *
@@ -125,10 +126,10 @@ if __name__ == "__main__":
 
     opt = parser.parse_args()
 
-    #alpha_seq = torch.tensor([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.9, 0, 0, 2.2, 0.1, 2.2, 0.3, 1.2, 0.1, 0.1, 0, 0, 0, 0, 0.1, 0.5, 0.1, 2.1, 1.8, 2.2]).to("cuda")  # RL
+    alpha_seq = torch.tensor([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.9, 0, 0, 2.2, 0.1, 2.2, 0.3, 1.2, 0.1, 0.1, 0, 0, 0, 0, 0.1, 0.5, 0.1, 2.1, 1.8, 2.2]).to("cuda")  # RL
     #alpha_seq = torch.tensor([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2.2,0,0,0,0,0,0,2.2,0,0.1,0,0,0,0,0,0.2,0,2.2,2.2,2.2]) # handcrafted1
     #alpha_seq = torch.tensor([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.1,0,0,0,0,0,0,0,0,2.2,0,0,0,0,0,0,2.2,0,0.2,0.2,0,0,0.1,0,0,0.1,2.2,2.2,0]) # handcrafted10
     #alpha_seq = torch.tensor([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-    alpha_seq = torch.tensor([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 2, 0.0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2]).to("cuda")  # RL
+    #alpha_seq = torch.tensor([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 2, 0.0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2]).to("cuda")  # RL
 
     get_results(alpha_seq, map_before=0.726)
