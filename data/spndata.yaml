@@ -1,0 +1,12 @@
+all_state: /data/blanka/DATASETS/SPN/all3/states
+train_state: /data/blanka/DATASETS/SPN/training3/states
+val_state: /data/blanka/DATASETS/SPN/validation3/states
+test_state: /data/blanka/DATASETS/SPN/testing3/states
+
+
+all_label: /data/blanka/DATASETS/SPN/all3/labels
+train_label: /data/blanka/DATASETS/SPN/training3/labels
+val_label:  /data/blanka/DATASETS/SPN/validation3/labels
+test_label:  /data/blanka/DATASETS/SPN/testing3/labels
+
+allsamples: /data/blanka/DATASETS/SPN/samples3.pkl

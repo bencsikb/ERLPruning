@@ -1,0 +1,14 @@
+				Class    Images     Targets         P           R          mAP@.5    	mAP@.5:.95:   remaining params ratio	speed (inference/NMS/total per 540x540 image at batch-size 1)
+
+(exp_kitti_tvt/best.pt)					       precision   	recall        	mAP@.5		mAP@.95	 	sparsity [%]
+KITTI validation set:  	 	all    1.49e+03    1.02e+04        0.682       	0.728      	0.726       	0.442					24.5/0.8/25.2 ms
+RL with round:			all    1.49e+03    1.02e+04       0.677       	0.697       	0.696       	0.416		48.9344			20.9/0.8/21.7 ms 
+RL without round: 			all    1.49e+03    1.02e+04        0.55       	0.134       	0.225      	0.0906					20.7/0.8/21.5 ms
+handcrafted1:			all    1.49e+03    1.02e+04        0.686       	0.658       	0.668       	0.394	 	40.2633
+handcrafted1 with round:		all    1.49e+03    1.02e+04        0.67       	0.695       	0.694       	0.415		39.2012
+handcrafted2:			all    1.49e+03    1.02e+04        0.728       	0.344       	0.458      	0.245		33.6353
+
+
+		
+ 			
+
