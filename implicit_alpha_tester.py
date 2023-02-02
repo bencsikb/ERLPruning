@@ -10,13 +10,14 @@ import time
 import pandas as pd
 import yaml
 
-#from prune_for_error import prune_network, normalize
-from auto_pruning import prune_network, normalize
+from prune_for_error import prune_network, normalize
+#from auto_pruning import prune_network, normalize
 from models.models import *
 from utils.layers import *
 from test import *
 from utils.datasets import *
 from utils.general import *
+from utils.helper_functions import document_model_details
 
 def get_results(alpha_seq, map_before=None, layer_index=43):
     yolo_layers = [138, 148, 149, 160]
@@ -68,6 +69,8 @@ def get_results(alpha_seq, map_before=None, layer_index=43):
 
     model, parser = prune_network(model, yolo_layers, layer_index, alpha_seq, dataset_make=True)
     model.to("cuda")
+
+    document_model_details(model, "./sandbox/mine_pruned_RL.txt")
 
     # Calculate metrics after
     results, _, _ = test(
@@ -126,10 +129,10 @@ if __name__ == "__main__":
 
     opt = parser.parse_args()
 
-    alpha_seq = torch.tensor([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.9, 0, 0, 2.2, 0.1, 2.2, 0.3, 1.2, 0.1, 0.1, 0, 0, 0, 0, 0.1, 0.5, 0.1, 2.1, 1.8, 2.2]).to("cuda")  # RL
+    #alpha_seq = torch.tensor([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.9, 0, 0, 2.2, 0.1, 2.2, 0.3, 1.2, 0.1, 0.1, 0, 0, 0, 0, 0.1, 0.5, 0.1, 2.1, 1.8, 2.2]).to("cuda")  # RL
     #alpha_seq = torch.tensor([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2.2,0,0,0,0,0,0,2.2,0,0.1,0,0,0,0,0,0.2,0,2.2,2.2,2.2]) # handcrafted1
     #alpha_seq = torch.tensor([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.1,0,0,0,0,0,0,0,0,2.2,0,0,0,0,0,0,2.2,0,0.2,0.2,0,0,0.1,0,0,0.1,2.2,2.2,0]) # handcrafted10
     #alpha_seq = torch.tensor([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-    #alpha_seq = torch.tensor([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 2, 0.0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2]).to("cuda")  # RL
+    alpha_seq = torch.tensor([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 2, 0.0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2]).to("cuda")  # RL
 
     get_results(alpha_seq, map_before=0.726)
