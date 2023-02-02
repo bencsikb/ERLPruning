@@ -230,6 +230,7 @@ class YOLOLayer(nn.Module):
             p = out[self.layers[i]]
             bs, _, ny, nx = p.shape  # bs, 255, 13, 13
             if (self.nx, self.ny) != (nx, ny):
+                print("Hellooo its modeld line 233")
                 self.create_grids((nx, ny), p.device)
 
             # outputs and weights

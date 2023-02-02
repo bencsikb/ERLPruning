@@ -300,7 +300,7 @@ if __name__ == '__main__':
     # For yolo training
     parser.add_argument('--weights', type=str, default="/home/blanka/ERLPruning/weights/yolov4.weights.1", help='initial weights path')
     #parser.add_argument('--weights', default= "/data/blanka/ERLPruning/runs/YOLOv4_KITTI/exp_kitti_tvt/weights/best.pt") #pretrained
-    #parser.add_argument('--weights', default= "/data/blanka/ERLPruning/runs/YOLOv4_PascalVoc/exp_pascalvoc_scratch_2/weights/last.pt") #pretrained
+    #parser.add_argument('--weights', default= "/data/blanka/ERLPruning/runs/YOLOv4_PascalVoc/exp_fromscratch_7__repr/weights/last.pt") #pretrained
     parser.add_argument('--cfg', type=str, default='cfg/yolov4_pascalvoc.cfg', help='model.yaml path')
     parser.add_argument('--data', type=str, default='data/pascalvoc.yaml', help='data.yaml path')
     parser.add_argument('--batch_size', default=16)
@@ -333,7 +333,7 @@ if __name__ == '__main__':
     parser.add_argument('--verbose', action='store_true', help='report mAP by class')
     parser.add_argument('--save-txt', action='store_true', help='save results to *.txt')
     parser.add_argument('--prune_flag', type=bool, default=False)
-    parser.add_argument('--test_case', default="exp_fromscratch_7__repr")
+    parser.add_argument('--test_case', default="deleteme")
 
     parser.add_argument('--yolo_layers', default=[138, 148, 149, 160])
     parser.add_argument('--alpha_seq', default=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.1,0.1,0,0,1.9,0,0,2.2,0.1,2.2,0.3,1.2,0.1,0.1,0,0,0,0,0.1,0.5,0.1,2.1,1.8,2.2], help="RL predicted policy")
