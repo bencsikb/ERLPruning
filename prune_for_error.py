@@ -527,7 +527,7 @@ if __name__ == '__main__':
     # parser.add_argument('--df_cols', default=['alpha', 'in_channel', 'out_channel', 'kernel', 'stride', 'pad', 'spars'])
     parser.add_argument('--df_cols', default=[''])
 
-    parser.add_argument('--test-cases', type=int, default=5000)
+    parser.add_argument('--test-cases', type=int, default=20000)
 
     opt = parser.parse_args()
     opt.data = check_file(opt.data)  # check file

@@ -8,6 +8,7 @@ import random
 import time
 from pathlib import Path
 import torch_pruning as tp
+import pandas as pd
 
 import torch.distributed as dist
 import torch.nn.functional as F
@@ -93,8 +94,16 @@ def choose_channels_to_prune(layer, layer_idx, alpha, dim):
 
     return indices.squeeze(dim=1).tolist()
 
-def prune_network(network, yolo_layers, layer_to_prune, alpha_seq, device='cuda', dataset_make=False):
-
+def prune_network(network, detection_layers, layer_to_prune, alpha_seq=None, state_size_check=False, device='cuda', dataset_make=False):
+    """
+    :param network: model to be pruned
+    :param detection_layers: layers that can't be pruned (ex. YOLO Layers)
+    :param layer_to_prune: only important when generating the dataset, at this layer the layer-related features are saved
+    :param state_size_check: True if the function is used for determining the number of prunable layers in the beginning.
+                            In this case, alpha_seq can be None.
+    :param dataset_make: True if the automatic data generation is the case, False in case of training the RL agent.
+    :return:
+    """
 
     # if dim == 0 --> prune output channels
     # if dim == 1 --> prune input channels
@@ -102,13 +111,8 @@ def prune_network(network, yolo_layers, layer_to_prune, alpha_seq, device='cuda'
     layer_cnt = 0
     network_size = len(network.module_list)
     dims = [0] * 1
-    alphas = []
-    prev_indexes = []
     output_filters = []
-    old_output_filters = []
-    index_container = []
     index_lens = []
-    yolo_flag = False
 
     parser = {'dim': dim,
               'in_ch': 0,
@@ -128,14 +132,13 @@ def prune_network(network, yolo_layers, layer_to_prune, alpha_seq, device='cuda'
         for i in range(network_size):
 
             start_time_forloop = time.time()
-            print(i)
 
             sequential_size = len(network.module_list[i])
             module_def = network.module_defs[i]
             if global_filewrite: f.write("\nmodule_def " + str(module_def["type"]) + str(module_def) + "\n")
 
-            if i in yolo_layers:
-                print("Skipped, as it is a YOLO Layer.")
+            if i in detection_layers:
+                #print("Skipped, as it is a YOLO Layer.")
                 continue
 
             if module_def["type"] == "convolutional":
@@ -144,11 +147,12 @@ def prune_network(network, yolo_layers, layer_to_prune, alpha_seq, device='cuda'
 
                     if global_filewrite: f.write("Pruning layer " + str(i) + " " + str(layer) + "\n")
 
-                    if isinstance(layer, nn.Conv2d) and glob_dims[i] == 0:
+                    if isinstance(layer, nn.Conv2d): # and glob_dims[i] == 0: # only if testing old 44 long alpha_seqs
 
-                        #alpha = np.around(alpha_seq[layer_cnt].item(), 1)
-                        alpha = float(torch.round(alpha_seq[layer_cnt]).item()) ## BUG !!!!
-                        #alpha = 0.2
+                        #alpha = float(torch.round(alpha_seq[layer_cnt]).item()) ## BUG !!!!
+                        if state_size_check: alpha = 0
+                        else:   alpha = np.around(alpha_seq[layer_cnt].item(), 1)
+
                         layer_cnt += 1
                         indices = choose_channels_to_prune(layer, layer_cnt, alpha, dim)
 
@@ -186,7 +190,8 @@ def prune_network(network, yolo_layers, layer_to_prune, alpha_seq, device='cuda'
 
     if dataset_make:
         return network, parser
-
+    elif state_size_check:
+        return layer_cnt
     else:
         return network
 
@@ -207,9 +212,38 @@ if __name__ == '__main__':
     parser.add_argument('--data', type=str, default='data/kitti.yaml', help='*.data path')
     parser.add_argument('--batch-size', type=int, default=1, help='size of each image batch')
     parser.add_argument('--img-size', type=int, default=540, help='inference size (pixels)')
+    parser.add_argument('--spndata', type=str, default='data/spndata.yaml', help='data.yaml path')
+    parser.add_argument('--layers-to-skip', default=[138, 148, 149, 160], help='Detection Layers most commonly (ex. YOLO Layers)')
+    parser.add_argument('--N_features', default=7, help='nFeatures+1')
+    parser.add_argument('--cfg', type=str, default='cfg/yolov4_kitti.cfg', help='*.cfg path')
+    parser.add_argument('--names', type=str, default='data/kitti.names', help='*.cfg path')
+    parser.add_argument('--df_cols', default=[''])
 
+    parser.add_argument('--test-cases', type=int, default=20000)
 
     opt = parser.parse_args()
+
+    opt = parser.parse_args()
+    opt.data = check_file(opt.data)  # check file
+    opt.spndata = check_file(opt.spndata)  # check file
+
+    # Create paths
+    with open(opt.spndata) as f:
+        pdata = yaml.load(f, Loader=yaml.FullLoader)
+        state_savepath = pdata['all_state']
+        label_savepath = pdata['all_label']
+        df_path = pdata['allsamples']
+
+
+    alphas = np.arange(0.0, 2.3, 0.1).tolist()
+    alphas = [float("{:.2f}".format(x)) for x in alphas]
+
+    glob_dims = [0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,
+                 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1,
+                 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1,
+                 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0,
+                 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1]
+    dim = 0
 
     # Image size
     gs = 32  # grid size (max stride)
@@ -222,31 +256,18 @@ if __name__ == '__main__':
     val_label_path = data['val_label']
 
     dataloader = \
-    create_dataloader(val_img_path, val_label_path, imgsz, opt.batch_size, 32, opt, hyp=None, augment=False,
-                      cache=False, rect=False)[0]
+        create_dataloader(val_img_path, val_label_path, imgsz, opt.batch_size, 32, opt, hyp=None, augment=False,
+                          cache=False, rect=False)[0]
+    # Load model
+    model = Darknet(opt.cfg).to('cuda')
 
-    if opt.weights:
-        if opt.weights.endswith(".pt"):
-            ckpt = torch.load(opt.weights)
+    ckpt = torch.load(opt.weights)
+    ckpt['model'] = {k: v for k, v in ckpt['model'].items() if model.state_dict()[k].numel() == v.numel()}
+    model.load_state_dict(ckpt['model'], strict=False)
 
-            if opt.partial_load:
-                for k, v in ckpt['model'].items():
-                    if model.state_dict()[k].numel() != v.numel():
-                        print(f"Weights are not loaded to layer {k}")
-
-                state_dict = {k: v for k, v in ckpt['model'].items() if model.state_dict()[k].numel() == v.numel()}
-                model.load_state_dict(state_dict, strict=False)
-                print('Transferred %g/%g items from %s' % (
-                len(state_dict), len(model.state_dict()), opt.weights))  # report
-            else:
-                if 'arch' in ckpt:
-                    print("arch in ckpt")
-                    model = ckpt['arch']
-                else:
-                    print(f"Error: ckpt has no key 'arch'.")
-
-        elif opt.weights.endswith('.weights'):
-            model.load_darknet_weights(opt.weights)
+    # Determine state size
+    N_prunable_layers = prune_network(model, opt.layers_to_skip, 0, state_size_check=True)
+    print(f"N_prunable_layers: {N_prunable_layers}")
 
     # Get metrics before pruning
     results, _, _ = test(
@@ -256,36 +277,178 @@ if __name__ == '__main__':
         model=model,
         opt=opt)
 
-    map_before = results[2]
+    prec, rec, map = results[0], results[1], results[2]
+    prec_before, rec_before, map_before = prec, rec, map
 
-        ##
+    print("map", map)
+    prec_before, rec_before, map_before = prec, rec, map
+
+
     network_size = len(model.module_list)
     network_param_nmb = sum([param.nelement() for param in model.parameters()])
 
-    yolo_layers = [138, 148, 149, 160]
-    alpha_seq = torch.tensor([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 2, 0.0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2]).to("cuda")  # RL
-    model, parser = prune_network(model, yolo_layers, layer_to_prune=0, alpha_seq=alpha_seq, dataset_make=True)
+    for test_case in range(opt.test_cases):
+        # if True:
 
-    results, _, _ = test(
-        opt.data,
-        dataloader=dataloader,
-        batch_size=opt.batch_size,
-        model=model,
-        opt=opt)
+        start_time_test_case = time.time()
 
-    prec_after, rec_after, map_after = results[0], results[1], results[2]
+        num_samples = 1
+        row_cnt = 0
+        prev_spars = -1
+        mu = 0
+        sigma = 0.4
+        unsorted_probs = generate_gaussian_probs(mu, sigma, len(alphas))
 
-    param_nmb_after = sum([param.nelement() for param in model.parameters()])
-    # print("remaining params ratio", param_nmb_after / network_param_nmb)
+        model = Darknet(opt.cfg).to('cuda')
+        ckpt = torch.load(opt.weights)
+        ckpt['model'] = {k: v for k, v in ckpt['model'].items() if model.state_dict()[k].numel() == v.numel()}
+        model.load_state_dict(ckpt['model'], strict=False)
 
-    pruned_perc = round((1 - param_nmb_after / network_param_nmb) * 100, 4)
-    map_after = round(map_after, 10)
-    dperf = 1.0 - (float(map_after) / float(map_before))
-    spars_norm = normalize(float(pruned_perc), 0, 100)  # percent of pruned params from the whole network
-    dperf_norm = normalize(1.0 - (float(map_after) / float(map_before)), 0, 1)
+        state = torch.full([N_prunable_layers, opt.N_features], -1.0)
+        label = torch.zeros([1, 4])  # sparsity, dmap, drec, dprec
+        alpha_seq = torch.full([N_prunable_layers], 0.0)  # for real pruning
 
-    print(f"mAP before, after: {map_before}, {map_after}")
-    print(f"param nmb before, after: {network_param_nmb}, {param_nmb_after}")
-    print(f"dperf, sparsity: {dperf}, {pruned_perc}")
-    print(f"norm dperf, sparsity: {dperf_norm}, {spars_norm}")
+        for layer_index in range(network_size):
+
+            start_time = time.time()
+
+            # Load the dataframe containing the already existing samples
+            print(df_path)
+            if (os.path.exists(df_path)):
+                df_allsamples = pd.read_pickle(df_path)
+                sample_cnt = df_allsamples.shape[0]
+            else:
+                df_allsamples = pd.DataFrame(columns=opt.df_cols)
+                sample_cnt = 0
+
+            if layer_index in [148, 149]:
+                continue
+            layer_param_nmb_before = sum(
+                [param.nelement() for name, param in model.named_parameters() if "." + str(layer_index) + "." in name])
+            ##todo param_nmb_before = sum([param.nelement() for param in model.parameters()])
+
+            module_def = model.module_defs[layer_index]
+            if module_def["type"] in ["route", "shortcut", "upsample", "maxpool", "yolo"] or glob_dims[
+                layer_index] == 1:
+                continue
+            layer = model.module_list[layer_index][0]  # only if convolutional
+
+            # Generate random alpha instances
+            probs = sort_gaussian_probs(unsorted_probs, len(alphas), layer_index, network_size)
+            alpha = sorted(random.choices(alphas, weights=probs, k=num_samples))[0]
+
+            skip = random.choice([1, 2, 3, 4, 5, 6])
+
+            """
+            if layer_index in [11, 24, 55]:
+                while alpha > 0.2:
+                    alpha = sorted(random.choices(alphas, weights=probs, k=num_samples))[0]
+            # elif layer_index in [86, 115]:
+            #    alpha = 2.2
+            elif layer_index in [123, 125]:
+                while alpha > 0.8:
+                    alpha = sorted(random.choices(alphas, weights=probs, k=num_samples))[0]
+            elif layer_index > 134 and layer_index < 155:
+                while alpha > 1.3:
+                    alpha = sorted(random.choices(alphas, weights=probs, k=num_samples))[0]
+            elif layer_index > 154 or layer_index in [86, 115]:
+                while alpha < 1.3:
+                    alpha = sorted(random.choices(alphas, weights=probs, k=num_samples))[0]
+
+            else:
+                if layer_index > 100 and layer_index % skip == 0:
+                    while alpha > 0.3:
+                        alpha = sorted(random.choices(alphas, weights=probs, k=num_samples))[0]
+                else:
+                    alpha = 0.0
+            """
+
+            state[row_cnt, 0] = normalize(alpha, 0, 2.2)
+            alpha_seq[row_cnt] = alpha
+            # alpha_seq = state[:, 0].to('cuda') ## BUG! This has to be unnormalized!!
+
+            print(alpha_seq)
+            model, parser = prune_network(model, opt.layers_to_skip, layer_index, alpha_seq, dataset_make=True)
+            model.to('cuda')
+
+            state[row_cnt, 1] = normalize(parser['in_ch'], 0, 1024)
+            state[row_cnt, 2] = normalize(parser['out_ch'], 0, 1024)
+            state[row_cnt, 3,] = normalize(parser['kernel'], 0, 3)
+            state[row_cnt, 4] = normalize(parser['stride'], 0, 2)
+            state[row_cnt, 5] = normalize(parser['pad'], 0, 1)
+            state[row_cnt, 6] = prev_spars
+
+            if alpha == 0.0:
+                prec_after, rec_after, map_after = prec_before, rec_before, map_before
+                prec_before, rec_before, map_before = prec_after, rec_after, map_after
+
+            else:
+
+                results, _, _ = test(
+                    opt.data,
+                    dataloader=dataloader,
+                    batch_size=opt.batch_size,
+                    model=model,
+                    opt=opt)
+
+                prec_after, rec_after, map_after = results[0], results[1], results[2]
+                prec_before, rec_before, map_before = prec_after, rec_after, map_after
+
+            print("prec_after, rec_after, map_after", prec_after, rec_after, map_after)
+
+            param_nmb_after = sum([param.nelement() for param in model.parameters()])
+            # print("remaining params ratio", param_nmb_after/param_nmb_before) # BUG!
+            print(param_nmb_after, network_param_nmb)
+            print("remaining params ratio", param_nmb_after / network_param_nmb)
+            layer_param_nmb_after = sum(
+                [param.nelement() for name, param in model.named_parameters() if "." + str(layer_index) + "." in name])
+
+            pruned_perc = round((1 - param_nmb_after / network_param_nmb) * 100, 4)
+            mAPa = round(map_after, 10)
+            spars = normalize(float(pruned_perc), 0, 100)  # percent of pruned params from the whole network
+            dmap = normalize(1.0 - (float(mAPa) / float(map)), 0, 1)
+            drec = normalize(1.0 - (float(rec_after) / float(rec)), 0, 1)
+            dprec = normalize(1.0 - (float(prec_after) / float(prec)), 0, 1)
+
+            label[0, 0], label[0, 1], label[0, 2], label[0, 3] = spars, dmap, drec, dprec
+
+            prev_spars = spars
+            row_cnt += 1
+
+            elapsed_time = time.time() - start_time
+            print("Runtime of one layer pruning: ", elapsed_time)
+
+            if layer_index == 159:
+                prec_before, rec_before, map_before = prec, rec, map
+
+            # SAVE
+
+            print(f"Sample_idx, layer_idx, alpha: {sample_cnt}, {layer_index}, {alpha}")
+            print("allsamples_shape", df_allsamples.shape)
+
+            state_tosave = state.reshape([opt.state_size[0] * opt.state_size[1]]).unsqueeze(dim=0)
+            df_state = pd.DataFrame([str(state_tosave)], columns=opt.df_cols)
+
+            if (df_allsamples == str(state_tosave)).all(1).any():
+                print("This state already exists in the dataset.")
+                continue
+            else:
+                if os.path.exists(os.path.join(state_savepath, str(sample_cnt) + ".txt")):
+                    print(f"Sample {sample_cnt} already exists!")
+                    break
+                elif os.path.exists(os.path.join(label_savepath, str(sample_cnt) + ".txt")):
+                    print(f"Label {sample_cnt} already exists!")
+                    break
+                else:
+                    np.savetxt(os.path.join(state_savepath, str(sample_cnt) + ".txt"), state.numpy())
+                    np.savetxt(os.path.join(label_savepath, str(sample_cnt) + ".txt"), label.numpy())
+
+                if df_allsamples.empty:
+                    df_allsamples = df_state
+                else:
+                    df_allsamples = pd.concat([df_allsamples, df_state], axis=0)
+                df_allsamples.to_pickle(df_path)
+                sample_cnt += 1
+
+        print("Runtime of one testcase: ", time.time() - start_time_test_case)
 
