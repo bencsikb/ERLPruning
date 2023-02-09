@@ -20,7 +20,7 @@ def denormalize(x, x_min, x_max):
         ret = ((x + 1) * (x_max - x_min)) / 2 + x_min
     elif type(x) == list:
         print("list")
-        ret = [((xi + 1) * (x_max - x_min)) / 2 + x_min for xi in x]
+        ret = [((float(xi) + 1) * (x_max - x_min)) / 2 + x_min for xi in x]
     else:
         print("single")
         x = float(x)
