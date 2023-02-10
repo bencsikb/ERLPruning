@@ -217,7 +217,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch-size', type=int, default=1, help='size of each image batch')
     parser.add_argument('--img-size', type=int, default=540, help='inference size (pixels)')
     parser.add_argument('--spndata', type=str, default='data/spndata.yaml', help='data.yaml path')
-    parser.add_argument('--layers-to-skip', default=[138, 148, 149, 160], help='Detection Layers most commonly (ex. YOLO Layers)')
+    parser.add_argument('--layers-to-skip', default=[138, 149, 160], help='Detection Layers most commonly (ex. YOLO Layers)')
     parser.add_argument('--N_features', default=7, help='nFeatures+1')
     parser.add_argument('--cfg', type=str, default='cfg/yolov4_kitti.cfg', help='*.cfg path')
     parser.add_argument('--names', type=str, default='data/kitti.names', help='*.cfg path')
@@ -314,11 +314,11 @@ if __name__ == '__main__':
         for layer_index in range(network_size):
 
             start_time = time.time()
+
             model = Darknet(opt.cfg).to('cuda')
             model.load_state_dict(ckpt['model'], strict=False)
 
             # Load the dataframe containing the already existing samples
-            print(df_path)
             if (os.path.exists(df_path)):
                 df_allsamples = pd.read_pickle(df_path)
                 sample_cnt = df_allsamples.shape[0]
@@ -326,14 +326,13 @@ if __name__ == '__main__':
                 df_allsamples = pd.DataFrame(columns=opt.df_cols)
                 sample_cnt = 0
 
-            if layer_index in [148, 149]:
-                continue
+
             layer_param_nmb_before = sum(
                 [param.nelement() for name, param in model.named_parameters() if "." + str(layer_index) + "." in name])
             param_nmb_before = sum([param.nelement() for param in model.parameters()])
 
             module_def = model.module_defs[layer_index]
-            if module_def["type"] in ["route", "shortcut", "upsample", "maxpool", "yolo"]: # or glob_dims[layer_index] == 1: !!! BUG !!!
+            if module_def["type"] in ["route", "shortcut", "upsample", "maxpool", "yolo"] or layer_index in opt.layers_to_skip: # or glob_dims[layer_index] == 1: !!! BUG !!!
                 continue
             layer = model.module_list[layer_index][0]  # only if convolutional
 
@@ -344,7 +343,8 @@ if __name__ == '__main__':
 
             skip = random.choice([1, 2, 3, 4, 5, 6])
 
-            """
+
+
             if layer_index in [11, 24, 55]:
                 while alpha > 0.2:
                     alpha = sorted(random.choices(alphas, weights=probs, k=num_samples))[0]
@@ -373,6 +373,7 @@ if __name__ == '__main__':
                     alpha = sorted(random.choices(alphas, weights=probs, k=num_samples))[0]
             else:
                 alpha = 0.0
+            """
 
 
             state[row_cnt, 0] = normalize(alpha, 0, 2.2)
@@ -466,7 +467,6 @@ if __name__ == '__main__':
                     df_allsamples = pd.concat([df_allsamples, df_state], axis=0)
                 df_allsamples.to_pickle(df_path)
                 sample_cnt += 1
-
 
         print("Runtime of one testcase: ", time.time() - start_time_test_case)
 

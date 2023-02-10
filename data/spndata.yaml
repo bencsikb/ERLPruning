@@ -1,12 +1,12 @@
-all_state: /data/blanka/DATASETS/SPN/all4/states
-train_state: /data/blanka/DATASETS/SPN/training4/states
-val_state: /data/blanka/DATASETS/SPN/validation4/states
-test_state: /data/blanka/DATASETS/SPN/testing4/states
+all_state: /data/blanka/DATASETS/SPN/all5/states
+train_state: /data/blanka/DATASETS/SPN/training5/states
+val_state: /data/blanka/DATASETS/SPN/validation5/states
+test_state: /data/blanka/DATASETS/SPN/testing5/states
 
 
-all_label: /data/blanka/DATASETS/SPN/all4/labels
-train_label: /data/blanka/DATASETS/SPN/training4/labels
-val_label:  /data/blanka/DATASETS/SPN/validation4/labels
-test_label:  /data/blanka/DATASETS/SPN/testing4/labels
+all_label: /data/blanka/DATASETS/SPN/all5/labels
+train_label: /data/blanka/DATASETS/SPN/training5/labels
+val_label:  /data/blanka/DATASETS/SPN/validation5/labels
+test_label:  /data/blanka/DATASETS/SPN/testing5/labels
 
-allsamples: /data/blanka/DATASETS/SPN/samples4.pkl
+allsamples: /data/blanka/DATASETS/SPN/samples5.pkl
