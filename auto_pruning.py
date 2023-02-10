@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 import torch_pruning as tp
 import pandas as pd
+import copy
 
 import torch.distributed as dist
 import torch.nn.functional as F
@@ -70,6 +71,7 @@ def choose_channels_to_prune(layer, layer_idx, alpha, dim):
     if global_print: print("std ", norms_std)
 
     # Find the indices of the channels that have to be pruned
+
     norm_condition = torch.logical_and((torch.absolute(norms) < norms_avg + alpha * norms_std),
                                       (torch.absolute(norms) > norms_avg - alpha * norms_std))
 
@@ -90,7 +92,7 @@ def choose_channels_to_prune(layer, layer_idx, alpha, dim):
         # indexes.pop(c)
         indices = indices[1:]
 
-    if global_print: print("len(indexes) ", len(indices))
+    if alpha != 0: print("len(indexes) ", len(indices), layer, layer_idx, alpha, dim)
 
     return indices.squeeze(dim=1).tolist()
 
@@ -126,9 +128,9 @@ def prune_network(network, detection_layers, layer_to_prune, alpha_seq=None, sta
     DG.build_dependency(network, example_inputs=torch.randn(1, 3, 224, 224).to(device))
     pruning_groups = []
 
-    save_path = "/home/blanka/YOLOv4_Pruning/sandbox/" + "pruning_develop_data.txt"
-    # with open(save_path, 'w') as f:
-    if True:
+    save_path = f"/home/blanka/ERLPruning/sandbox/pruning_develop_data_{layer_to_prune}.txt"
+    with open(save_path, 'w') as f:
+    #if True:
         for i in range(network_size):
 
             start_time_forloop = time.time()
@@ -152,6 +154,8 @@ def prune_network(network, detection_layers, layer_to_prune, alpha_seq=None, sta
                         #alpha = float(torch.round(alpha_seq[layer_cnt]).item()) ## BUG !!!!
                         if state_size_check: alpha = 0
                         else:   alpha = np.around(alpha_seq[layer_cnt].item(), 1)
+
+                        f.write(str(i) + str(layer) + "\n")
 
                         layer_cnt += 1
                         indices = choose_channels_to_prune(layer, layer_cnt, alpha, dim)
@@ -184,8 +188,8 @@ def prune_network(network, detection_layers, layer_to_prune, alpha_seq=None, sta
                         if global_filewrite: f.write("conv index lens " + str(index_lens) + "\n")
 
                     else:
-
-                        print(f"Error! The layer is not an instance of nn.Conv2d! \n{layer}")
+                        continue
+                        #print(f"Error! The layer is not an instance of nn.Conv2d! \n{layer}")
 
 
     if dataset_make:
@@ -260,7 +264,6 @@ if __name__ == '__main__':
                           cache=False, rect=False)[0]
     # Load model
     model = Darknet(opt.cfg).to('cuda')
-
     ckpt = torch.load(opt.weights)
     ckpt['model'] = {k: v for k, v in ckpt['model'].items() if model.state_dict()[k].numel() == v.numel()}
     model.load_state_dict(ckpt['model'], strict=False)
@@ -299,10 +302,10 @@ if __name__ == '__main__':
         sigma = 0.4
         unsorted_probs = generate_gaussian_probs(mu, sigma, len(alphas))
 
-        model = Darknet(opt.cfg).to('cuda')
+        model_init = Darknet(opt.cfg).to('cuda')
         ckpt = torch.load(opt.weights)
-        ckpt['model'] = {k: v for k, v in ckpt['model'].items() if model.state_dict()[k].numel() == v.numel()}
-        model.load_state_dict(ckpt['model'], strict=False)
+        ckpt['model'] = {k: v for k, v in ckpt['model'].items() if model_init.state_dict()[k].numel() == v.numel()}
+        model_init.load_state_dict(ckpt['model'], strict=False)
 
         state = torch.full([N_prunable_layers, opt.N_features], -1.0)
         label = torch.zeros([1, 4])  # sparsity, dmap, drec, dprec
@@ -311,6 +314,8 @@ if __name__ == '__main__':
         for layer_index in range(network_size):
 
             start_time = time.time()
+            model = Darknet(opt.cfg).to('cuda')
+            model.load_state_dict(ckpt['model'], strict=False)
 
             # Load the dataframe containing the already existing samples
             print(df_path)
@@ -325,16 +330,16 @@ if __name__ == '__main__':
                 continue
             layer_param_nmb_before = sum(
                 [param.nelement() for name, param in model.named_parameters() if "." + str(layer_index) + "." in name])
-            ##todo param_nmb_before = sum([param.nelement() for param in model.parameters()])
+            param_nmb_before = sum([param.nelement() for param in model.parameters()])
 
             module_def = model.module_defs[layer_index]
-            if module_def["type"] in ["route", "shortcut", "upsample", "maxpool", "yolo"] or glob_dims[
-                layer_index] == 1:
+            if module_def["type"] in ["route", "shortcut", "upsample", "maxpool", "yolo"]: # or glob_dims[layer_index] == 1: !!! BUG !!!
                 continue
             layer = model.module_list[layer_index][0]  # only if convolutional
 
             # Generate random alpha instances
             probs = sort_gaussian_probs(unsorted_probs, len(alphas), layer_index, network_size)
+            print(f"probs: {len(probs)}, alphas: {len(alphas)}, {layer_index}, {network_size}")
             alpha = sorted(random.choices(alphas, weights=probs, k=num_samples))[0]
 
             skip = random.choice([1, 2, 3, 4, 5, 6])
@@ -363,6 +368,13 @@ if __name__ == '__main__':
                     alpha = 0.0
             """
 
+            if layer_index > 80:
+                while alpha < 1.5:
+                    alpha = sorted(random.choices(alphas, weights=probs, k=num_samples))[0]
+            else:
+                alpha = 0.0
+
+
             state[row_cnt, 0] = normalize(alpha, 0, 2.2)
             alpha_seq[row_cnt] = alpha
             # alpha_seq = state[:, 0].to('cuda') ## BUG! This has to be unnormalized!!
@@ -370,6 +382,8 @@ if __name__ == '__main__':
             print(alpha_seq)
             model, parser = prune_network(model, opt.layers_to_skip, layer_index, alpha_seq, dataset_make=True)
             model.to('cuda')
+            with open(f"/home/blanka/ERLPruning/sandbox/stupidmodel{layer_index}.txt", "w") as f:
+                f.write(str(model))
 
             state[row_cnt, 1] = normalize(parser['in_ch'], 0, 1024)
             state[row_cnt, 2] = normalize(parser['out_ch'], 0, 1024)
@@ -377,6 +391,7 @@ if __name__ == '__main__':
             state[row_cnt, 4] = normalize(parser['stride'], 0, 2)
             state[row_cnt, 5] = normalize(parser['pad'], 0, 1)
             state[row_cnt, 6] = prev_spars
+
 
             if alpha == 0.0:
                 prec_after, rec_after, map_after = prec_before, rec_before, map_before
@@ -399,6 +414,8 @@ if __name__ == '__main__':
             param_nmb_after = sum([param.nelement() for param in model.parameters()])
             # print("remaining params ratio", param_nmb_after/param_nmb_before) # BUG!
             print(param_nmb_after, network_param_nmb)
+            print(param_nmb_after, param_nmb_before)
+
             print("remaining params ratio", param_nmb_after / network_param_nmb)
             layer_param_nmb_after = sum(
                 [param.nelement() for name, param in model.named_parameters() if "." + str(layer_index) + "." in name])
@@ -426,7 +443,7 @@ if __name__ == '__main__':
             print(f"Sample_idx, layer_idx, alpha: {sample_cnt}, {layer_index}, {alpha}")
             print("allsamples_shape", df_allsamples.shape)
 
-            state_tosave = state.reshape([opt.state_size[0] * opt.state_size[1]]).unsqueeze(dim=0)
+            state_tosave = state.reshape(N_prunable_layers * opt.N_features).unsqueeze(dim=0)
             df_state = pd.DataFrame([str(state_tosave)], columns=opt.df_cols)
 
             if (df_allsamples == str(state_tosave)).all(1).any():
@@ -449,6 +466,7 @@ if __name__ == '__main__':
                     df_allsamples = pd.concat([df_allsamples, df_state], axis=0)
                 df_allsamples.to_pickle(df_path)
                 sample_cnt += 1
+
 
         print("Runtime of one testcase: ", time.time() - start_time_test_case)
 
