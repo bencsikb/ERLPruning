@@ -175,9 +175,9 @@ def prune_network(network, yolo_layers, layer_to_prune, alpha_seq, device='cuda'
               'pad': 0,
               'nmb_of_pruned_ch': 0}
 
-    save_path = "/home/blanka/YOLOv4_Pruning/sandbox/" + "pruning_develop_data.txt"
-    # with open(save_path, 'w') as f:
-    if True:
+    save_path = "/home/blanka/ERLPruning/sandbox/" + "pruning_develop_data_old.txt"
+    with open(save_path, 'w') as f:
+    #if True:
         time_sum = 0
         for i in range(network_size):
 
@@ -274,6 +274,8 @@ def prune_network(network, yolo_layers, layer_to_prune, alpha_seq, device='cuda'
 
                             #alpha = float(torch.round(alpha_seq[layer_cnt]).item()) ## BUG !!!!
                             alpha = np.around(alpha_seq[layer_cnt].item(), 1)
+
+                            f.write(str(i) + str(layer) + "\n")
 
                             layer_cnt += 1
                             indexes = choose_channels_to_prune(layer, layer_cnt, alpha, dim)
@@ -623,6 +625,8 @@ if __name__ == '__main__':
         for layer_index in range(network_size):
 
             start_time = time.time()
+            model = Darknet(opt.cfg).to('cuda')
+            model.load_state_dict(ckpt['model'], strict=False)
 
             # Load the dataframe containing the already existing samples
             print(df_path)
@@ -637,7 +641,7 @@ if __name__ == '__main__':
                 continue
             layer_param_nmb_before = sum(
                 [param.nelement() for name, param in model.named_parameters() if "." + str(layer_index) + "." in name])
-            ##todo param_nmb_before = sum([param.nelement() for param in model.parameters()])
+            param_nmb_before = sum([param.nelement() for param in model.parameters()])
 
             module_def = model.module_defs[layer_index]
             if module_def["type"] in ["route", "shortcut", "upsample", "maxpool", "yolo"] or glob_dims[
@@ -711,6 +715,8 @@ if __name__ == '__main__':
             param_nmb_after = sum([param.nelement() for param in model.parameters()])
             # print("remaining params ratio", param_nmb_after/param_nmb_before) # BUG!
             print(param_nmb_after, network_param_nmb)
+            print(param_nmb_after, param_nmb_before)
+
             print("remaining params ratio", param_nmb_after / network_param_nmb)
             layer_param_nmb_after = sum(
                 [param.nelement() for name, param in model.named_parameters() if "." + str(layer_index) + "." in name])
@@ -761,5 +767,6 @@ if __name__ == '__main__':
                     df_allsamples = pd.concat([df_allsamples, df_state], axis=0)
                 df_allsamples.to_pickle(df_path)
                 sample_cnt += 1
+
 
         print("Runtime of one testcase: ", time.time() - start_time_test_case)
