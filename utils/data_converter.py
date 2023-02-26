@@ -86,11 +86,11 @@ def split_spndata(origpath, train_idxpath, val_idxpath):
     print(len(train_idx_list), len(val_idx_list))
 
 
-    split_folder(os.path.join(origpath, "temp2/states"), os.path.join(origpath, "validation2/states"), train_idx_list, imgformat=".jpg")
-    split_folder(os.path.join(origpath, "temp2/labels"), os.path.join(origpath, "validation2/labels"), train_idx_list, imgformat=".jpg")
+    split_folder(os.path.join(origpath, "temp5/states"), os.path.join(origpath, "validation5/states"), train_idx_list, imgformat=".jpg")
+    split_folder(os.path.join(origpath, "temp5/labels"), os.path.join(origpath, "validation5/labels"), train_idx_list, imgformat=".jpg")
 
-    split_folder(os.path.join(origpath, "temp2/states"), os.path.join(origpath, "testing2/states"), val_idx_list, imgformat=".jpg")
-    split_folder(os.path.join(origpath, "temp2/labels"), os.path.join(origpath, "testing2/labels"), val_idx_list, imgformat=".jpg")
+    split_folder(os.path.join(origpath, "temp5/states"), os.path.join(origpath, "testing5/states"), val_idx_list, imgformat=".jpg")
+    split_folder(os.path.join(origpath, "temp5/labels"), os.path.join(origpath, "testing5/labels"), val_idx_list, imgformat=".jpg")
 
 
 def split_folder(origpath, destpath, idx_list, imgformat=".png"):
@@ -187,11 +187,11 @@ if __name__ == '__main__':
     """
 
     # Splitting SPN data
-    labelpath = '/data/blanka/DATASETS/SPN/temp2/labels'
+    labelpath = '/data/blanka/DATASETS/SPN/temp5/labels'
     savepath = "/home/blanka/ERLPruning"
-    #get_files2split(labelpath, savepath, 0.5, batch_size=2048)
+    #get_files2split(labelpath, savepath, 0.5, batch_size=128)
 
     origpath = "/data/blanka/DATASETS/SPN"
-    train_idxpath = "/home/blanka/ERLPruning/spn_valid_ids.csv"
-    val_idxpath = "/home/blanka/ERLPruning/spn_test_ids.csv"
+    train_idxpath = "/home/blanka/ERLPruning/spn5_valid_ids.csv"
+    val_idxpath = "/home/blanka/ERLPruning/spn5_test_ids.csv"
     split_spndata(origpath, train_idxpath, val_idxpath)
