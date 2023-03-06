@@ -16,7 +16,7 @@ from varname import nameof
 
 
 from models.models import *
-from utils.LR_utils import normalize, denormalize, get_state, get_state2, get_layers_forpruning, list2FloatTensor, test_alpha_seq
+from utils.LR_utils import normalize, denormalize, get_state, get_state2, get_prunable_layers_yolov4, list2FloatTensor, test_alpha_seq
 from models.LR_models import actorNet, criticNet, actorNet2, init_weights
 from utils.RL_rewards import reward_function,  reward_function2,reward_function3, reward_function4, reward_function5, reward_function6
 from models.error_pred_network import errorNet
@@ -33,15 +33,15 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     #parser.add_argument('--layers_for_pruning', default=[0, 2, 5, 11, 15, 19, 24, 28, 32, 35, 38, 41, 44, 47, 50, 55, 59, 63, 66, 69, 72, 75, 78, 81, 86, 90, 94, 97, 100, 105, 107, 115, 117, 123, 125, 127, 133, 135, 137, 144, 146, 155, 157, 159])
-    parser.add_argument('--yolo_layers', default=[138, 148, 149, 160])
+    parser.add_argument('--yolo_layers', default=[138, 149, 160])
     parser.add_argument('--device', type=str, default='cuda')
     parser.add_argument('--episodeNum', type=int, default=2000)
-    parser.add_argument('--batch-size', type=int, default=4096)
+    parser.add_argument('--batch-size', type=int, default=16)
     parser.add_argument('--ent_coef', type=int, default=5e-3)
     parser.add_argument('--actor-base-lr', type=int, default=1e-3)
     parser.add_argument('--actor-last-lr', type=int, default=5e-8)
     parser.add_argument('--critic-base-lr', type=int, default=0.01)
-    parser.add_argument('--test-case', type=str, default='repr_58_c_2')
+    parser.add_argument('--test-case', type=str, default='trans_02')
     parser.add_argument('--save-interval', type=int, default=50)
     #parser.add_argument('--ppo-eps-base', type=int, default=4)
     #parser.add_argument('--ppo-eps-last', type=int, default=4)
@@ -67,16 +67,17 @@ if __name__ == '__main__':
     parser.add_argument('--test', type=bool, default=False)
 
     # Pretrained nets
-    parser.add_argument('--network_forpruning', type=str, default='/data/blanka/runs/exp_kitti/weights/last.pt')
+    parser.add_argument('--network_forpruning', default= "/data/blanka/ERLPruning/runs/YOLOv4_KITTI/exp_kitti_tvt/weights/best.pt") #pretrained
     parser.add_argument('--cfg', type=str, default='cfg/yolov4_kitti.cfg', help='model.yaml path')
-    parser.add_argument('--error_pred_network', type=str, default='/data/blanka/checkpoints/pruning_error_pred/test_97_2534.pth')
+    # parser.add_argument('--spn', type=str, default='/data/blanka/checkpoints/pruning_error_pred/test_97_2534.pth')
+    parser.add_argument('--spn', type=str, default='/data/blanka/ERLPruning/runs/SPN/transformer_01/weights/last.pt')
     parser.add_argument('--pretrained', type=str, default='')
 
     # Destinations
-    parser.add_argument('--ckpt-save-path', type=str, default='checkpoints/ReinforcementLearning')
-    parser.add_argument('--results-save-path', type=str, default='results/ReinforcementLearning')
+    parser.add_argument('--ckpt-save-path', type=str, default='/data/blanka/ERLPruning/runs/RL')
+    parser.add_argument('--results-save-path', type=str, default='/data/blanka/ERLPruning/runs/RL')
     parser.add_argument('--log-dir', type=str, default='/home/blanka/YOLOv4_Pruning/logs')
-    parser.add_argument('--tb-log-dir', type=str, default='/home/blanka/YOLOv4_Pruning/runs/ReinforcementLearning', help="Tensorboard logging directoty")
+    parser.add_argument('--tb-log-dir', type=str, default='/data/blanka/ERLPruning/runs/RL', help="Tensorboard logging directoty")
 
     #parser.add_argument('--logdir', type=str, default='runs/pruning_error', help='tensorboard log path')
 
@@ -95,10 +96,10 @@ if __name__ == '__main__':
     net_for_pruning.load_state_dict(state_dict, strict=False)
     network_size = len(net_for_pruning.module_list)
 
-    # Load pretrained error prediction net
-    ckpt_epn = torch.load(opt.error_pred_network)
-    error_pred_net = ckpt_epn['model']
-    error_pred_net.eval()
+    # Load pretrained SPN
+    ckpt_spn = torch.load(opt.spn)
+    spn = ckpt_spn['model']
+    spn.eval()
 
     # Initialize actor and critic networks
 
@@ -128,9 +129,9 @@ if __name__ == '__main__':
     else:
         print("new model")
 
-        actorNet = actorNet2(44, 23).to(opt.device)
+        actorNet = actorNet2(107, 23).to(opt.device)
         #actorNet.apply(init_weights)
-        criticNet = criticNet(44, 1).to(opt.device)
+        criticNet = criticNet(107, 1).to(opt.device)
         actor_optimizer = torch.optim.Adam(actorNet.parameters(), lr=opt.actor_base_lr)
         lr_sched = torch.optim.lr_scheduler.CosineAnnealingLR(actor_optimizer, T_max=opt.episodeNum, eta_min=opt.actor_last_lr, last_epoch=-1)
         critic_optimizer = torch.optim.Adam(criticNet.parameters(), lr=opt.critic_base_lr)
@@ -140,8 +141,8 @@ if __name__ == '__main__':
         episode = 0
 
 
-    # Get layer indexes that can be pruned
-    layers_for_pruning = get_layers_forpruning(net_for_pruning, opt.yolo_layers)
+    # Get layer indicies that can be pruned
+    layers_for_pruning = get_prunable_layers_yolov4(net_for_pruning, opt.yolo_layers)
 
     # Define alpha values
     alphas = np.arange(0.0, 2.3, 0.1).tolist()
@@ -166,8 +167,8 @@ if __name__ == '__main__':
         #    network_seq.append(pickle.loads(pickle.dumps(net_for_pruning)))
         init_param_nmb = sum([param.nelement() for param in net_for_pruning.parameters()])
 
-        action_seq = torch.full([opt.batch_size, 1, 44], -1.0)
-        state_seq = torch.full([opt.batch_size, 6, 44], -1.0)
+        action_seq = torch.full([opt.batch_size, 1, 107], -1.0)
+        state_seq = torch.full([opt.batch_size, 6, 107], -1.0)
 
         actions = []
         states = []
@@ -214,22 +215,29 @@ if __name__ == '__main__':
                 log_prob = action_dist.log_prob(action).unsqueeze(1)
                 policy = probs.gather(-1, action.unsqueeze(0))
                 entropy = - (probs * log_softmax).sum(1, keepdim=True)
-                if layer_cnt == 0 or layer_cnt == 43:
+
+                # Log probs for the first and last layer
+                if layer_cnt == 0 or layer_cnt == 106:
                     rl_logger.log_probs(probs, episode, layer_cnt)
                 tb_logger.log_probs(probs, episode, layer_cnt)
 
-                if layer_cnt == 0 or layer_cnt == 43:
+                if layer_cnt == 0 or layer_cnt == 106:
                     tb_logger.log_probs_merged(probs, episode, layer_cnt)
 
                 for i in range(opt.batch_size):
                     action_seq[i, :, layer_cnt] = normalize(alphas[action[i]], 0.0, 2.2)
 
+                print(denormalize(action_seq[0,:,:], 0.0, 2.2))
+
 
                 # Get the error for every sample in the batch
-                errorNet_input_data = torch.cat((action_seq, state_seq[:,-1, :].unsqueeze(1)), dim=1).view([opt.batch_size, -1]).type(torch.float32).to(opt.device)
-                prediction = error_pred_net(errorNet_input_data)
+                spn_input_data = torch.cat((action_seq, state_seq[:,-1, :].unsqueeze(1)), dim=1).view([opt.batch_size, -1]).type(torch.float32).to(opt.device)
+                spn_tgt = torch.tensor([[1.0], [-1.0]]).expand(-1, opt.batch_size).permute(1, 0).type(torch.float32).to(opt.device)
+                #print(f"{spn_input_data.shape} {spn_tgt.shape}", {spn_tgt[0, :]})
+                prediction = spn(spn_input_data.unsqueeze(dim=2), spn_tgt.unsqueeze(dim=2))
+                prediction = prediction.permute(1, 0, 2)
                 #if errorNet_input_data[0,40] == -1.0 and errorNet_input_data[0,0] and errorNet_input_data[0,20] == -1.0:
-                error, sparsity = prediction[:,0], prediction[:,1]
+                sparsity, error = prediction[:,0].squeeze(), prediction[:,1].squeeze()
                 errors.append(error.unsqueeze(1))
 
                 #reward = reward_function(A=denormalize(error, 0, 1), Ta=opt.target_error, S=denormalize(sparsity, 0, 1), Ts=opt.target_spars, device=opt.device)
@@ -379,24 +387,4 @@ if __name__ == '__main__':
 
         episode += 1
         print("Episode time ", time.time() - start_time_episode)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
