@@ -22,7 +22,8 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from prune_for_error import prune_network, normalize
+#from prune_for_error import prune_network, normalize
+from utils.spn_utils import normalize
 from models.models import *
 from utils.layers import *
 from test import *
@@ -37,13 +38,6 @@ glob_dims = [0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0
                  1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1,
                  1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0,
                  1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1]
-
-def normalize(x, x_min, x_max):
-    # Between -1 and 1
-
-    x = float(x)
-    x = 2 * ((x - x_min) / (x_max - x_min)) - 1
-    return x
 
 
 def choose_channels_to_prune(layer, layer_idx, alpha, dim):
@@ -368,12 +362,14 @@ if __name__ == '__main__':
                     alpha = 0.0
             """
 
+
             if layer_index > 80:
                 while alpha < 1.5:
                     alpha = sorted(random.choices(alphas, weights=probs, k=num_samples))[0]
             else:
                 alpha = 0.0
             """
+
 
 
             state[row_cnt, 0] = normalize(alpha, 0, 2.2)

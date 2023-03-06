@@ -14,17 +14,10 @@ from utils.layers import *
 from test import *
 from utils.datasets import *
 from utils.general import *
+from utils.spn_utils import normalize
 
 global_print = False
 global_filewrite = False
-
-
-def normalize(x, x_min, x_max):
-    # Between -1 and 1
-
-    x = float(x)
-    x = 2 * ((x - x_min) / (x_max - x_min)) - 1
-    return x
 
 
 def choose_channels_to_prune(layer, layer_idx, alpha, dim):

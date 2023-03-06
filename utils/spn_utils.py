@@ -13,6 +13,22 @@ import random
 import time
 
 
+def normalize(x, x_min, x_max):
+    # Between -1 and 1
+
+    if torch.is_tensor(x):
+        ret = 2 * ((x - x_min) / (x_max - x_min)) - 1
+    elif type(x) == list:
+        print("list")
+        ret = [2 * ((float(xi) - x_min) / (x_max - x_min)) - 1 for xi in x]
+    else:
+        print("single")
+        x = float(x)
+        ret = 2 * ((x - x_min) / (x_max - x_min)) - 1
+
+    return ret
+
+
 def denormalize(x, x_min, x_max):
     # Denormalize ground truth and predicted error
 
