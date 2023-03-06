@@ -24,7 +24,8 @@ class RLLogger():
             file.write(json.dumps(settings_dict))
 
     def log_results(self, results_dir, episode, critic_loss, actor_loss, reward):
-        path = os.path.join(results_dir, self.test_case)
+        # path = os.path.join(results_dir, self.test_case)
+        path = os.path.join(self.log_dir, "results.txt")
         with open(path, 'a+') as f:
             f.write(str(episode) + " " + str(critic_loss) + " " + str(actor_loss) + " " + str(reward) + "\n")
 
