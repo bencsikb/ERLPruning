@@ -118,6 +118,26 @@ def get_state2(state, sparsity, layer, layer_cnt):
 
     return state
 
+def get_prunable_layers_yolov4(model, detection_layers):
+    """
+    Determines the prunable layers in a YOLOv4 model.
+    :param model: YOLOv4 PyTorch model
+    :param detection_layers: (list) indicies of the detection (YOLO) layers
+    :return: (list) indicies of the prunable layers
+    """
+
+    index_list = []
+    network_size = len(model.module_list)
+
+    for i in network_size:
+        module_def = model.module_defs[i]
+        if module_def["type"] in ["route", "shortcut", "upsample", "maxpool", "yolo"] or layer_index in detection_layers:
+            continue
+        else:
+            index_list.append(i)
+
+    return index_list
+
 
 def get_layers_forpruning(network, yolo_layers):
     layers_to_prune = []
