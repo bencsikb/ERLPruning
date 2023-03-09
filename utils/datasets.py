@@ -360,8 +360,9 @@ class LoadPruningData():
         pruningdata_path = self.pruningdata_files[index % len(self.pruningdata_files)].rstrip()
         pruningdata = np.loadtxt(pruningdata_path)
         pruningdata = torch.as_tensor(pruningdata)
+        # print(f"data shape in dataset/__getitem__: {pruningdata.shape}")
         #pruningdata = torch.reshape(pruningdata, (1, 8,-1))
-        pruningdata = torch.reshape(pruningdata, (-1,))
+        # todo pruningdata = torch.reshape(pruningdata, (-1,))
         #print(index, "data", pruningdata.shape)
         #pruningdata_final[0,:,:] = pruningdata
         #pruningdata_final[1, :, :] = pruningdata
@@ -372,7 +373,7 @@ class LoadPruningData():
         label = np.loadtxt(label_path)
         label = torch.as_tensor(label)
         label = torch.reshape(label, (1, -1))
-        #print(index, "error", label.shape)
+        # print(f"label shape in dataset/__getitem__: {label.shape}")
 
 
         #print("Data path __getitem__: ", pruningdata_path)
