@@ -23,7 +23,8 @@ from models.models import *
 from utils.losses import LogCoshLoss
 from utils.optimizers import RAdam, Lamb
 from test_spn_transformer import validate
-from transformer import Transformer
+#from transformer import Transformer
+from transformer_manual import Transformer, get_tgt_mask
 
 torch.manual_seed(42)
 torch.cuda.manual_seed(42)
@@ -59,24 +60,32 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
 
         for batch_i, (data, label_gt) in enumerate(dataloader):
             # print(f"batch {batch_i}")
-            data = data.type(torch.float32).cuda()
+            data = data.type(torch.float32).cuda() # [batch_size, n_layers*n_features]
+
             label_gt = label_gt.type(torch.float32).cuda()
             optimizer.zero_grad()
-            data = torch.cat((data[:, :44], data[:, 264:]), dim=1) # use only alpha and spars as state features
-            data = data.unsqueeze(dim=2) # embedding size --> 1
-            label_gt = label_gt.unsqueeze(dim=2)
+            data = torch.cat((data[:, :107], data[:, -107:]), dim=1) #  TODO  use only alpha and spars as state features
+
+            data = data.unsqueeze(dim=2) # embedding size --> 1 [batch_size, n_features, embedding_size]
+            label_gt = label_gt.unsqueeze(dim=2) # [batch_size, n_lables, embedding_size]
             # print(f"datashape {data.shape}, labelshape {label_gt.shape}")
+            #with open("./sandbox/TransfomerModel.txt", 'w') as f:
+            #    f.write(str(model))
 
             sequence_length = label_gt.size(1)
-            tgt_mask = model.get_tgt_mask(sequence_length).to(device)
+            #tgt_mask = model.get_tgt_mask(sequence_length).to(device)
 
-            prediction = model(data, label_gt, tgt_mask)
-            prediction = prediction.permute(1, 0, 2)
+            print(data.shape)
+            #prediction = model(data, label_gt, tgt_mask
+            prediction = model(data)
+            prediction = prediction.permute(1, 2, 0) # --> [batch_size, n_lables, dim_model]
 
             # print(f"prediction {prediction.shape}")
+            print(label_gt.shape, prediction.shape)
 
-            loss = criterion_dperf(denormalize(label_gt[:, 0], 0, 1),  denormalize(prediction[:, 0], 0, 1)) \
-                   + criterion_spars(denormalize(label_gt[:, 1], 0, 1), denormalize(prediction[:, 1], 0, 1))
+            # TODO label[0] is sparsity label[1] is dperf
+            loss = criterion_spars(denormalize(label_gt[:, 0, 0], 0, 1),  denormalize(prediction[:, 0, 0], 0, 1)) \
+                   + criterion_dperf(denormalize(label_gt[:, 1, 0], 0, 1), denormalize(prediction[:, 1, 0], 0, 1))
             # loss = criterion_err(label_gt[:,0], prediction[:,0]) + criterion_spars(label_gt[:,1], prediction[:,1])
 
             optimizer.zero_grad()
@@ -84,13 +93,8 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
             optimizer.step()
             running_loss += loss.cpu().item()
             # err, prec, neg_err, neg_corr, negsign_prec = calc_precision(error_gt, error_pred)
-            metrics_sum_dperf += calc_metrics(label_gt[:, 0], prediction[:, 0], margin=opt.margin)
-            metrics_sum_spars += calc_metrics(label_gt[:, 1], prediction[:, 1], margin=opt.margin)
-            #print(metrics_sum_dperf[0,0], tmp[2]) #error
-            #print(metrics_sum_dperf , tmp[0]) #accuracy
-            #print(metrics_sum_dperf[0,3], tmp[1], "\n") #negsign recall
-            #print(metrics_sum_dperf)
-            #print(tmp)
+            metrics_sum_spars += calc_metrics(label_gt[:, 0, 0], prediction[:, 0, 0], margin=opt.margin)
+            metrics_sum_dperf += calc_metrics(label_gt[:, 1, 0], prediction[:, 1, 0], margin=opt.margin)
 
             # print(batch_i, error_gt)
 
@@ -186,10 +190,10 @@ if __name__ == '__main__':
     parser.add_argument('--device', default='cuda', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--pretrained', type=str, default='')
     parser.add_argument('--smalldata', type=bool, default=False)
-    parser.add_argument('--test-case', type=str, default='transformer_01')
+    parser.add_argument('--test-case', type=str, default='manual_transformer_01')
     #parser.add_argument('--test-case', type=str, default='test_90_rep_2')
 
-    parser.add_argument('--epochs', type=int, default=4000)
+    parser.add_argument('--epochs', type=int, default=1000)
     parser.add_argument('--val_interval', type=int, default=1)
     #parser.add_argument('--batch-size', type=int, default=32768)
     parser.add_argument('--batch-size', type=int, default=128)
@@ -234,10 +238,15 @@ if __name__ == '__main__':
     else:
         print("new model")
         epoch = 0
+
+        """
         model = Transformer(
             # num_tokens=4, dim_model=8, num_heads=2, num_encoder_layers=3, num_decoder_layers=3, dropout_p=0.1
-            num_tokens = 1, dim_model = 8, num_heads = 2, num_encoder_layers = 3, num_decoder_layers = 3, dropout_p = 0.1
+            num_tokens = 1, dim_model = 10, num_heads = 2, num_encoder_layers = 3, num_decoder_layers = 3, dropout_p = 0.05
         ).to(opt.device)        # model.apply(init_weights)
+        """
+        model = Transformer(nhead=2, dim_model=10, out_size=2).to(opt.device)
+        #model = nn.TransformerEncoderLayer(512, 8, dropout=0)
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
         # optimizer = Lamb(model.parameters(), lr=0.001, weight_decay=1e-5)
         lr_sched = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=opt.epochs, eta_min=0.000005,

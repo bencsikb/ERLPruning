@@ -36,10 +36,10 @@ def validate(dataloader, model, criterion_dperf, criterion_spars, margin, device
         prediction = model(data, label_gt, tgt_mask)
         prediction = prediction.permute(1, 0, 2)
 
-        loss = criterion_dperf(denormalize(label_gt[:, 0], 0, 1), denormalize(prediction[:, 0], 0, 1)) + criterion_spars(denormalize(label_gt[:, 1], 0, 1), denormalize(prediction[:, 1], 0, 1))
+        loss = criterion_spars(denormalize(label_gt[:, 0], 0, 1), denormalize(prediction[:, 0], 0, 1)) + criterion_dperf(denormalize(label_gt[:, 1], 0, 1), denormalize(prediction[:, 1], 0, 1))
         running_loss += loss.cpu().item()
-        metrics_sum_dperf += calc_metrics(label_gt[:, 0], prediction[:, 0], margin=margin)
-        metrics_sum_spars += calc_metrics(label_gt[:, 1], prediction[:, 1], margin=margin)
+        metrics_sum_spars += calc_metrics(label_gt[:, 0], prediction[:, 0], margin=margin)
+        metrics_sum_dperf += calc_metrics(label_gt[:, 1], prediction[:, 1], margin=margin)
 
     # Calculate validation metrics
 
