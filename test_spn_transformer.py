@@ -24,22 +24,19 @@ def validate(dataloader, model, criterion_dperf, criterion_spars, margin, device
 
     for batch_i, (data, label_gt) in enumerate(dataloader):
         data = data.type(torch.float32).cuda()
-        data = torch.cat((data[:, :44], data[:, 264:]), dim=1)
+        data = torch.cat((data[:, :, 0].unsqueeze(2), data[:, :, -1].unsqueeze(2)), dim=2)
         label_gt = label_gt.type(torch.float32).cuda()
-        data = data.unsqueeze(dim=2)  # embedding size --> 1
         label_gt = label_gt.unsqueeze(dim=2)
-        #print(f"datashape {data.shape}, labelshape {label_gt.shape}")
 
-        sequence_length = label_gt.size(1)
-        tgt_mask = model.get_tgt_mask(sequence_length).to(device)
+        prediction = model(data)
+        prediction = prediction.permute(1, 2, 0)
 
-        prediction = model(data, label_gt, tgt_mask)
-        prediction = prediction.permute(1, 0, 2)
+        loss = criterion_spars(denormalize(label_gt[:, 0, 0], 0, 1), denormalize(prediction[:, 0, 0], 0, 1)) \
+               + criterion_dperf(denormalize(label_gt[:, 1, 0], 0, 1), denormalize(prediction[:, 1, 0], 0, 1))
 
-        loss = criterion_spars(denormalize(label_gt[:, 0], 0, 1), denormalize(prediction[:, 0], 0, 1)) + criterion_dperf(denormalize(label_gt[:, 1], 0, 1), denormalize(prediction[:, 1], 0, 1))
         running_loss += loss.cpu().item()
-        metrics_sum_spars += calc_metrics(label_gt[:, 0], prediction[:, 0], margin=margin)
-        metrics_sum_dperf += calc_metrics(label_gt[:, 1], prediction[:, 1], margin=margin)
+        metrics_sum_spars += calc_metrics(label_gt[:, 0, 0], prediction[:, 0, 0], margin=margin)
+        metrics_sum_dperf += calc_metrics(label_gt[:, 1, 0], prediction[:, 1, 0], margin=margin)
 
     # Calculate validation metrics
 

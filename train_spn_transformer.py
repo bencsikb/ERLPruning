@@ -60,33 +60,25 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
 
         for batch_i, (data, label_gt) in enumerate(dataloader):
             # print(f"batch {batch_i}")
-            data = data.type(torch.float32).cuda() # [batch_size, n_layers*n_features]
 
+            # print(f"data in train before cutting out features: {data.shape}")
+            data = data.type(torch.float32).cuda() # [batch_size, n_layers*n_features]
             label_gt = label_gt.type(torch.float32).cuda()
             optimizer.zero_grad()
-            data = torch.cat((data[:, :107], data[:, -107:]), dim=1) #  TODO  use only alpha and spars as state features
 
-            data = data.unsqueeze(dim=2) # embedding size --> 1 [batch_size, n_features, embedding_size]
-            label_gt = label_gt.unsqueeze(dim=2) # [batch_size, n_lables, embedding_size]
-            # print(f"datashape {data.shape}, labelshape {label_gt.shape}")
-            #with open("./sandbox/TransfomerModel.txt", 'w') as f:
-            #    f.write(str(model))
-
-            sequence_length = label_gt.size(1)
-            #tgt_mask = model.get_tgt_mask(sequence_length).to(device)
-
-            print(data.shape)
+            #data = torch.cat((data[:, :107], data[:, -107:]), dim=1) #  TODO  use only alpha and spars as state features
+            #data = data.unsqueeze(dim=2) # embedding size --> 1 [batch_size, n_features, embedding_size]
+            data = torch.cat((data[:, :, 0].unsqueeze(2), data[:, :, -1].unsqueeze(2)), dim=2)
+            label_gt = label_gt.unsqueeze(dim=2) # [batch_size, n_labels, 1]
+            #print(f"data in train after cutting out features: {data.shape}")
             #prediction = model(data, label_gt, tgt_mask
+
             prediction = model(data)
-            prediction = prediction.permute(1, 2, 0) # --> [batch_size, n_lables, dim_model]
+            prediction = prediction.permute(1, 2, 0) # --> [batch_size, n_lables, sequence_length]
+            # print(f"label, prediction in train: {label_gt.shape}, {prediction.shape}")
 
-            # print(f"prediction {prediction.shape}")
-            print(label_gt.shape, prediction.shape)
-
-            # TODO label[0] is sparsity label[1] is dperf
             loss = criterion_spars(denormalize(label_gt[:, 0, 0], 0, 1),  denormalize(prediction[:, 0, 0], 0, 1)) \
                    + criterion_dperf(denormalize(label_gt[:, 1, 0], 0, 1), denormalize(prediction[:, 1, 0], 0, 1))
-            # loss = criterion_err(label_gt[:,0], prediction[:,0]) + criterion_spars(label_gt[:,1], prediction[:,1])
 
             optimizer.zero_grad()
             loss.backward()
@@ -96,20 +88,6 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
             metrics_sum_spars += calc_metrics(label_gt[:, 0, 0], prediction[:, 0, 0], margin=opt.margin)
             metrics_sum_dperf += calc_metrics(label_gt[:, 1, 0], prediction[:, 1, 0], margin=opt.margin)
 
-            # print(batch_i, error_gt)
-
-            # if error_gt[0].item() < -0.8 and data[0][46]==-1:
-            # if error_gt[0].item() < -0.8 or error_gt[1].item() < -0.8 :
-
-            # print(data.view(-1,44))
-            # print("Ground truth: ", label_gt[0,:])
-            # print("Predicted: ", prediction[0,:])
-            # cnnt += 1
-            # print("Error, prec", err, prec)
-
-            # print(f"{batch_i}/{len(dataloader)} batches done")
-
-        # print("cnt ", cnnt)
 
         # Calculate training metrics
         running_loss /= len(dataloader)
@@ -245,7 +223,7 @@ if __name__ == '__main__':
             num_tokens = 1, dim_model = 10, num_heads = 2, num_encoder_layers = 3, num_decoder_layers = 3, dropout_p = 0.05
         ).to(opt.device)        # model.apply(init_weights)
         """
-        model = Transformer(nhead=2, dim_model=10, out_size=2).to(opt.device)
+        model = Transformer(nhead=2, dim_model=2, out_size=2).to(opt.device)
         #model = nn.TransformerEncoderLayer(512, 8, dropout=0)
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
         # optimizer = Lamb(model.parameters(), lr=0.001, weight_decay=1e-5)
