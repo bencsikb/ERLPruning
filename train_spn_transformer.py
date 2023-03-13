@@ -61,33 +61,39 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
         for batch_i, (data, label_gt) in enumerate(dataloader):
             # print(f"batch {batch_i}")
 
-            # print(f"data in train before cutting out features: {data.shape}")
+            print(f"data in train before cutting out features: {data.shape}")
             data = data.type(torch.float32).cuda() # [batch_size, n_layers*n_features]
             label_gt = label_gt.type(torch.float32).cuda()
             optimizer.zero_grad()
 
             #data = torch.cat((data[:, :107], data[:, -107:]), dim=1) #  TODO  use only alpha and spars as state features
             #data = data.unsqueeze(dim=2) # embedding size --> 1 [batch_size, n_features, embedding_size]
-            data = torch.cat((data[:, :, 0].unsqueeze(2), data[:, :, -1].unsqueeze(2)), dim=2)
-            label_gt = label_gt.unsqueeze(dim=2) # [batch_size, n_labels, 1]
-            #print(f"data in train after cutting out features: {data.shape}")
+            # data = torch.cat((data[:, :, :1], data[:, :, -1:]), dim=2)
+            data = torch.cat((data[:, :, :5], data[:, :, -1:]), dim=2)
+
+            #label_gt = label_gt.unsqueeze(dim=2) # [batch_size, n_labels, 1]
+            print(f"data in train after cutting out features: {data.shape}")
             #prediction = model(data, label_gt, tgt_mask
 
             prediction = model(data)
-            prediction = prediction.permute(1, 2, 0) # --> [batch_size, n_lables, sequence_length]
-            # print(f"label, prediction in train: {label_gt.shape}, {prediction.shape}")
+            prediction = prediction.permute(0, 1) # --> [batch_size, n_lables, sequence_length]
+            print(f"label, prediction in train: {label_gt.shape}, {prediction.shape}")
 
-            loss = criterion_spars(denormalize(label_gt[:, 0, 0], 0, 1),  denormalize(prediction[:, 0, 0], 0, 1)) \
-                   + criterion_dperf(denormalize(label_gt[:, 1, 0], 0, 1), denormalize(prediction[:, 1, 0], 0, 1))
+            # loss = criterion_spars(denormalize(label_gt[:, 0, 0], 0, 1),  denormalize(prediction[:, 0, 0], 0, 1)) \
+            #       + criterion_dperf(denormalize(label_gt[:, 1, 0], 0, 1), denormalize(prediction[:, 1, 0], 0, 1))
+
+            loss = criterion_spars(denormalize(label_gt[:, 0], 0, 1), denormalize(prediction[:, 0], 0, 1)) \
+                   + criterion_dperf(denormalize(label_gt[:, 1], 0, 1), denormalize(prediction[:, 1], 0, 1))
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             running_loss += loss.cpu().item()
             # err, prec, neg_err, neg_corr, negsign_prec = calc_precision(error_gt, error_pred)
-            metrics_sum_spars += calc_metrics(label_gt[:, 0, 0], prediction[:, 0, 0], margin=opt.margin)
-            metrics_sum_dperf += calc_metrics(label_gt[:, 1, 0], prediction[:, 1, 0], margin=opt.margin)
-
+            # metrics_sum_spars += calc_metrics(label_gt[:, 0, 0], prediction[:, 0, 0], margin=opt.margin)
+            # metrics_sum_dperf += calc_metrics(label_gt[:, 1, 0], prediction[:, 1, 0], margin=opt.margin)
+            metrics_sum_spars += calc_metrics(label_gt[:, 0], prediction[:, 0], margin=opt.margin)
+            metrics_sum_dperf += calc_metrics(label_gt[:, 1], prediction[:, 1], margin=opt.margin)
 
         # Calculate training metrics
         running_loss /= len(dataloader)
@@ -146,8 +152,8 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
         # Save params
 
         with open(results_file, 'a') as f:
-            f.write(F"{epoch} {running_loss} {val_running_loss} | {metrics_avg_dperf} | {metrics_avg_spars} "
-                    F"| {val_metrics_avg_dperf} | {val_metrics_avg_spars}\n".replace("[", "").replace("]","").replace(",","").replace("\t", ""))
+            f.write(F"{epoch} {running_loss} {val_running_loss} | {metrics_avg_dperf} | {val_metrics_avg_dperf} "
+                    F"| {metrics_avg_spars} | {val_metrics_avg_spars}\n".replace("[", "").replace("]","").replace(",","").replace("\t", ""))
 
         lr_sched.step()
         lr_print = 'Learning rate at this epoch is: %0.9f' % lr_sched.get_lr()[0]
@@ -168,13 +174,13 @@ if __name__ == '__main__':
     parser.add_argument('--device', default='cuda', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--pretrained', type=str, default='')
     parser.add_argument('--smalldata', type=bool, default=False)
-    parser.add_argument('--test-case', type=str, default='manual_transformer_01')
+    parser.add_argument('--test-case', type=str, default='manual_transformer_07')
     #parser.add_argument('--test-case', type=str, default='test_90_rep_2')
 
     parser.add_argument('--epochs', type=int, default=1000)
     parser.add_argument('--val_interval', type=int, default=1)
     #parser.add_argument('--batch-size', type=int, default=32768)
-    parser.add_argument('--batch-size', type=int, default=128)
+    parser.add_argument('--batch-size', type=int, default=2048)
     parser.add_argument('--margin', type=int, default=0.02)
 
     opt = parser.parse_args()
@@ -223,7 +229,7 @@ if __name__ == '__main__':
             num_tokens = 1, dim_model = 10, num_heads = 2, num_encoder_layers = 3, num_decoder_layers = 3, dropout_p = 0.05
         ).to(opt.device)        # model.apply(init_weights)
         """
-        model = Transformer(nhead=2, dim_model=2, out_size=2).to(opt.device)
+        model = Transformer(nhead=2, dim_model=6, out_size=2).to(opt.device)
         #model = nn.TransformerEncoderLayer(512, 8, dropout=0)
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
         # optimizer = Lamb(model.parameters(), lr=0.001, weight_decay=1e-5)

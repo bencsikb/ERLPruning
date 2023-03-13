@@ -47,8 +47,11 @@ class Transformer(nn.Module):
 
         # Embedding + positional encoding - Out size = (batch_size, sequence length, dim_model)
         #print(f"src type in Transformer forward: {type(src)}, {src.dtype}")
-        # src = self.embedding(src) * math.sqrt(self.dim_model)
-        # tgt = self.embedding(tgt) * math.sqrt(self.dim_model)
+
+        print(f"src before embedding {src.shape}")
+        src = self.embedding(src) * math.sqrt(self.dim_model)
+        tgt = self.embedding(tgt) * math.sqrt(self.dim_model)
+        print(f"src before encoding {src.shape}")
         src = self.positional_encoder(src)
         tgt = self.positional_encoder(tgt)
 
@@ -56,6 +59,7 @@ class Transformer(nn.Module):
         # to obtain size (sequence length, batch_size, dim_model),
         src = src.permute(1, 0, 2)
         tgt = tgt.permute(1, 0, 2)
+        print(f"src after encoding {src.shape}")
 
         # Transformer blocks - Out size = (sequence length, batch_size, num_tokens)
         transformer_out = self.transformer(src, tgt, tgt_mask=tgt_mask, src_key_padding_mask=src_pad_mask,
@@ -208,6 +212,7 @@ def train_loop(model, opt, loss_fn, dataloader):
         sequence_length = y_input.size(1)
         tgt_mask = model.get_tgt_mask(sequence_length).to(device)
         # print(f"data types in train_loop: {type(X)}, {type(y_input)}, {X.dtype}, {y_input.dtype}")
+        print(f"train_loop X, y: {X.shape} {y.shape}")
 
         # Standard training except we pass in y_input and tgt_mask
         pred = model(X, y_input, tgt_mask)
@@ -295,7 +300,7 @@ if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(device)
     model = Transformer(
-        num_tokens=4, dim_model=8, num_heads=2, num_encoder_layers=3, num_decoder_layers=3, dropout_p=0.1
+        num_tokens=4, dim_model=32, num_heads=2, num_encoder_layers=3, num_decoder_layers=3, dropout_p=0.1
     ).to(device)
     opt = torch.optim.SGD(model.parameters(), lr=0.01)
     loss_fn = nn.CrossEntropyLoss()

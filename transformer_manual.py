@@ -2,6 +2,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.autograd import Variable
 
 import math
 import numpy as np
@@ -10,7 +11,7 @@ import random
 # embedding_dim == n_prunable_layers (106)
 # dim_model == n_features (2)
 
-"""
+
 # The positional encoding vector, embedding_dim is d_model
 class PositionalEncoder(nn.Module):
     def __init__(self, embedding_dim, max_seq_length=512, dropout=0.1):
@@ -32,9 +33,9 @@ class PositionalEncoder(nn.Module):
         # Add the positional encoding vector to the embedding vector
         x = x + pe
         x = self.dropout(x)
-        return x
-"""
+        return x.permute(1, 0, 2)
 
+"""
 class PositionalEncoding(nn.Module):
     def __init__(self, dim_model, dropout_p, max_len):
         super().__init__()
@@ -62,24 +63,27 @@ class PositionalEncoding(nn.Module):
 
     def forward(self, token_embedding: torch.tensor) -> torch.tensor:
         # Residual connection + pos encoding
-        # print(f"PositionalEncoder forward: {token_embedding.shape}, {self.pos_encoding[:token_embedding.size(0), :].shape} ")
+        print(f"PositionalEncoder forward: {token_embedding.shape}, {self.pos_encoding[:token_embedding.size(0), :].shape} ")
         return self.dropout(token_embedding + self.pos_encoding[:token_embedding.size(0), :]).permute(1, 0, 2)
-
+"""
 
 class Transformer(nn.Module):
     def __init__(self, nhead, dim_model, out_size):
         super(Transformer, self).__init__()
-        self.encoder = nn.TransformerEncoderLayer(dim_model, nhead, dim_feedforward=3, dropout=0)
+        self.encoder = nn.TransformerEncoderLayer(dim_model, nhead, dim_feedforward=128, dropout=0)
         #self.positional_encoder = PositionalEncoder(embedding_dim=dim_model)
-        self.positional_encoder = PositionalEncoding(dim_model=dim_model, dropout_p=0, max_len=5000)
+        self.positional_encoder = PositionalEncoder(embedding_dim=dim_model)
         self.final_linear = nn.Linear(dim_model, out_size)
 
     def forward(self, src, src_mask=None):
-        # print(f"src in transformer forward before PosEnd: {src.shape}")
+        print(f"src in transformer forward before PosEnd: {src.shape}")
         x = self.positional_encoder(src)
-        # print(f"x in transformer forward after PosEnd: {src.shape}")
+        print(f"x in transformer forward after PosEnd: {x.shape}")
         x = self.encoder(x)
-        out = self.final_linear(x)
+        x = self.encoder(x)
+        print(f"x in transformer forward after Encoder: {x.shape}")
+        out = self.final_linear(x[0, :, :])
+        # out = self.final_linear(x)
 
         return out
 
