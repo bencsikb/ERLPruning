@@ -24,7 +24,7 @@ from utils.losses import LogCoshLoss
 from utils.optimizers import RAdam, Lamb
 from test_spn_transformer import validate
 #from transformer import Transformer
-from transformer_manual import Transformer, get_tgt_mask
+from transformer_manual import Transformer #, get_tgt_mask
 
 torch.manual_seed(42)
 torch.cuda.manual_seed(42)
@@ -174,13 +174,13 @@ if __name__ == '__main__':
     parser.add_argument('--device', default='cuda', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--pretrained', type=str, default='')
     parser.add_argument('--smalldata', type=bool, default=False)
-    parser.add_argument('--test-case', type=str, default='manual_transformer_07')
+    parser.add_argument('--test-case', type=str, default='manual_transformer_11')
     #parser.add_argument('--test-case', type=str, default='test_90_rep_2')
 
     parser.add_argument('--epochs', type=int, default=1000)
     parser.add_argument('--val_interval', type=int, default=1)
     #parser.add_argument('--batch-size', type=int, default=32768)
-    parser.add_argument('--batch-size', type=int, default=2048)
+    parser.add_argument('--batch-size', type=int, default=512)
     parser.add_argument('--margin', type=int, default=0.02)
 
     opt = parser.parse_args()
@@ -229,7 +229,7 @@ if __name__ == '__main__':
             num_tokens = 1, dim_model = 10, num_heads = 2, num_encoder_layers = 3, num_decoder_layers = 3, dropout_p = 0.05
         ).to(opt.device)        # model.apply(init_weights)
         """
-        model = Transformer(nhead=2, dim_model=6, out_size=2).to(opt.device)
+        model = Transformer(nhead=6, dim_model=6, out_size=2).to(opt.device)
         #model = nn.TransformerEncoderLayer(512, 8, dropout=0)
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
         # optimizer = Lamb(model.parameters(), lr=0.001, weight_decay=1e-5)
