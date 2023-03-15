@@ -85,12 +85,16 @@ def split_spndata(origpath, train_idxpath, val_idxpath):
 
     print(len(train_idx_list), len(val_idx_list))
 
+    fromfolder = "temp52"
+    tofolder1 = "validation52"
+    tofolder2 = "testing52"
 
-    split_folder(os.path.join(origpath, "temp5/states"), os.path.join(origpath, "validation5/states"), train_idx_list, imgformat=".jpg")
-    split_folder(os.path.join(origpath, "temp5/labels"), os.path.join(origpath, "validation5/labels"), train_idx_list, imgformat=".jpg")
 
-    split_folder(os.path.join(origpath, "temp5/states"), os.path.join(origpath, "testing5/states"), val_idx_list, imgformat=".jpg")
-    split_folder(os.path.join(origpath, "temp5/labels"), os.path.join(origpath, "testing5/labels"), val_idx_list, imgformat=".jpg")
+    split_folder(os.path.join(origpath, f"{fromfolder}/states"), os.path.join(origpath, f"{tofolder1}/states"), train_idx_list, imgformat=".jpg")
+    split_folder(os.path.join(origpath, f"{fromfolder}/labels"), os.path.join(origpath, f"{tofolder1}/labels"), train_idx_list, imgformat=".jpg")
+
+    split_folder(os.path.join(origpath, f"{fromfolder}/states"), os.path.join(origpath, f"{tofolder2}/states"), val_idx_list, imgformat=".jpg")
+    split_folder(os.path.join(origpath, f"{fromfolder}/labels"), os.path.join(origpath, f"{tofolder2}/labels"), val_idx_list, imgformat=".jpg")
 
 
 def split_folder(origpath, destpath, idx_list, imgformat=".png"):
@@ -187,11 +191,11 @@ if __name__ == '__main__':
     """
 
     # Splitting SPN data
-    labelpath = '/data/blanka/DATASETS/SPN/temp5/labels'
+    labelpath = '/data/blanka/DATASETS/SPN/temp52/labels'
     savepath = "/home/blanka/ERLPruning"
-    #get_files2split(labelpath, savepath, 0.5, batch_size=128)
+    # get_files2split(labelpath, savepath, 0.5, batch_size=1024)
 
     origpath = "/data/blanka/DATASETS/SPN"
-    train_idxpath = "/home/blanka/ERLPruning/spn5_valid_ids.csv"
-    val_idxpath = "/home/blanka/ERLPruning/spn5_test_ids.csv"
+    train_idxpath = "/home/blanka/ERLPruning/spn52_valid_ids.csv"
+    val_idxpath = "/home/blanka/ERLPruning/spn52_test_ids.csv"
     split_spndata(origpath, train_idxpath, val_idxpath)
