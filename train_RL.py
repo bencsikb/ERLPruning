@@ -36,16 +36,16 @@ if __name__ == '__main__':
     parser.add_argument('--yolo_layers', default=[138, 149, 160])
     parser.add_argument('--device', type=str, default='cuda')
     parser.add_argument('--episodeNum', type=int, default=2000)
-    parser.add_argument('--batch-size', type=int, default=16)
+    parser.add_argument('--batch-size', type=int, default=4096) #todo
     parser.add_argument('--ent_coef', type=int, default=5e-3)
     parser.add_argument('--actor-base-lr', type=int, default=1e-3)
     parser.add_argument('--actor-last-lr', type=int, default=5e-8)
     parser.add_argument('--critic-base-lr', type=int, default=0.01)
-    parser.add_argument('--test-case', type=str, default='trans_02')
+    parser.add_argument('--test-case', type=str, default='old_repr_01_res')
     parser.add_argument('--save-interval', type=int, default=50)
     #parser.add_argument('--ppo-eps-base', type=int, default=4)
     #parser.add_argument('--ppo-eps-last', type=int, default=4)
-    parser.add_argument('--n-prunable-layers', type=int, default=107)
+    parser.add_argument('--n-prunable-layers', type=int, default=44) #todo
 
 
     # For reward function
@@ -70,9 +70,9 @@ if __name__ == '__main__':
     # Pretrained nets
     parser.add_argument('--network_forpruning', default= "/data/blanka/ERLPruning/runs/YOLOv4_KITTI/exp_kitti_tvt/weights/best.pt") #pretrained
     parser.add_argument('--cfg', type=str, default='cfg/yolov4_kitti.cfg', help='model.yaml path')
-    # parser.add_argument('--spn', type=str, default='/data/blanka/checkpoints/pruning_error_pred/test_97_2534.pth')
-    parser.add_argument('--spn', type=str, default='/data/blanka/ERLPruning/runs/SPN/manual_transformer_all52_14/weights/best.pt')
-    parser.add_argument('--pretrained', type=str, default='')
+    parser.add_argument('--spn', type=str, default='/data/blanka/checkpoints/pruning_error_pred/test_97_2534.pth')
+    #todo parser.add_argument('--spn', type=str, default='/data/blanka/ERLPruning/runs/SPN/manual_transformer_all52_14/weights/best.pt')
+    parser.add_argument('--pretrained', type=str, default='/data/blanka/ERLPruning/runs/RL/old_repr_01_550.pth')
 
     # Destinations
     parser.add_argument('--ckpt-save-path', type=str, default='/data/blanka/ERLPruning/runs/RL')
@@ -193,7 +193,7 @@ if __name__ == '__main__':
 
         for layer_i in range(network_size):
 
-            if layer_i in layers_for_pruning: #todo
+            if layer_i in opt.layers_for_pruning: #todo
                 #print("Pruning layer ", layer_cnt, layer_i)
                 sequential_size = len(net_for_pruning.module_list[layer_i])
                 layer = [net_for_pruning.module_list[layer_i][j] for j in range(sequential_size) if isinstance(net_for_pruning.module_list[layer_i][j], nn.Conv2d)]
@@ -227,7 +227,7 @@ if __name__ == '__main__':
                     rl_logger.log_probs(probs, episode, layer_cnt)
                 tb_logger.log_probs(probs, episode, layer_cnt)
 
-                if layer_cnt == 0 or layer_cnt == 106:
+                if layer_cnt == 0 or layer_cnt == opt.n_prunable_layers-1:
                     tb_logger.log_probs_merged(probs, episode, layer_cnt)
 
                 for i in range(opt.batch_size):
@@ -237,11 +237,11 @@ if __name__ == '__main__':
 
 
                 # Get the error for every sample in the batch
-                #errorNet_input_data = torch.cat((action_seq, state_seq[:, -1, :].unsqueeze(1)), dim=1).view(
-                #    [opt.batch_size, -1]).type(torch.float32).to(opt.device)
-                #prediction = spn(errorNet_input_data)
+                errorNet_input_data = torch.cat((action_seq, state_seq[:, -1, :].unsqueeze(1)), dim=1).view(
+                    [opt.batch_size, -1]).type(torch.float32).to(opt.device)
+                prediction = spn(errorNet_input_data)
 
-
+                """ todo
                 print(f"state_seq in main: {state_seq.shape}")
                 spn_input_data = torch.cat((torch.cat((action_seq, state_seq[:, :4, :]), dim=1), state_seq[:,-1, :].unsqueeze(1)), dim=1).permute(0,2,1).type(torch.float32).to(opt.device)
                 #spn_input_data = torch.cat((action_seq, state_seq[:, -1:, :]), dim=1).permute(0,2,1).type(torch.float32).to(opt.device)
@@ -252,6 +252,7 @@ if __name__ == '__main__':
                 spn_input_data  = spn_input_data.cpu()
                 print(f"spn_input_data after detach: {spn_input_data.device}")
                 #if errorNet_input_data[0,40] == -1.0 and errorNet_input_data[0,0] and errorNet_input_data[0,20] == -1.0:
+                """
                 sparsity, error = prediction[:,0].squeeze(), prediction[:,1].squeeze()
                 errors.append(error.unsqueeze(1))
 
