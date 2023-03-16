@@ -32,7 +32,7 @@ timefile = "/home/blanka/YOLOv4_Pruning/sandbox/time_measure_pruning3.txt"
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    #parser.add_argument('--layers_for_pruning', default=[0, 2, 5, 11, 15, 19, 24, 28, 32, 35, 38, 41, 44, 47, 50, 55, 59, 63, 66, 69, 72, 75, 78, 81, 86, 90, 94, 97, 100, 105, 107, 115, 117, 123, 125, 127, 133, 135, 137, 144, 146, 155, 157, 159])
+    parser.add_argument('--layers_for_pruning', default=[0, 2, 5, 11, 15, 19, 24, 28, 32, 35, 38, 41, 44, 47, 50, 55, 59, 63, 66, 69, 72, 75, 78, 81, 86, 90, 94, 97, 100, 105, 107, 115, 117, 123, 125, 127, 133, 135, 137, 144, 146, 155, 157, 159])
     parser.add_argument('--yolo_layers', default=[138, 149, 160])
     parser.add_argument('--device', type=str, default='cuda')
     parser.add_argument('--episodeNum', type=int, default=2000)
@@ -45,6 +45,7 @@ if __name__ == '__main__':
     parser.add_argument('--save-interval', type=int, default=50)
     #parser.add_argument('--ppo-eps-base', type=int, default=4)
     #parser.add_argument('--ppo-eps-last', type=int, default=4)
+    parser.add_argument('--n-prunable-layers', type=int, default=107)
 
 
     # For reward function
@@ -70,7 +71,7 @@ if __name__ == '__main__':
     parser.add_argument('--network_forpruning', default= "/data/blanka/ERLPruning/runs/YOLOv4_KITTI/exp_kitti_tvt/weights/best.pt") #pretrained
     parser.add_argument('--cfg', type=str, default='cfg/yolov4_kitti.cfg', help='model.yaml path')
     # parser.add_argument('--spn', type=str, default='/data/blanka/checkpoints/pruning_error_pred/test_97_2534.pth')
-    parser.add_argument('--spn', type=str, default='/data/blanka/ERLPruning/runs/SPN/transformer_01/weights/last.pt')
+    parser.add_argument('--spn', type=str, default='/data/blanka/ERLPruning/runs/SPN/manual_transformer_all52_14/weights/best.pt')
     parser.add_argument('--pretrained', type=str, default='')
 
     # Destinations
@@ -129,9 +130,9 @@ if __name__ == '__main__':
     else:
         print("new model")
 
-        actorNet = actorNet2(107, 23).to(opt.device)
+        actorNet = actorNet2(opt.n_prunable_layers*6, 23).to(opt.device)
         #actorNet.apply(init_weights)
-        criticNet = criticNet(107, 1).to(opt.device)
+        criticNet = criticNet(opt.n_prunable_layers*6, 1).to(opt.device)
         actor_optimizer = torch.optim.Adam(actorNet.parameters(), lr=opt.actor_base_lr)
         lr_sched = torch.optim.lr_scheduler.CosineAnnealingLR(actor_optimizer, T_max=opt.episodeNum, eta_min=opt.actor_last_lr, last_epoch=-1)
         critic_optimizer = torch.optim.Adam(criticNet.parameters(), lr=opt.critic_base_lr)
@@ -140,6 +141,10 @@ if __name__ == '__main__':
         actor_criterion = ActorPPOLoss().to(opt.device) if opt.PPO_flag else ActorLoss().to(opt.device)
         episode = 0
 
+    # Print the number of params od actor and critic nets
+    actor_total_params = sum(param.numel() for param in actorNet.parameters())
+    critic_total_params = sum(param.numel() for param in criticNet.parameters())
+    print(f"actor, critic params in main: {actor_total_params}, {critic_total_params}")
 
     # Get layer indicies that can be pruned
     layers_for_pruning = get_prunable_layers_yolov4(net_for_pruning, opt.yolo_layers)
@@ -167,8 +172,8 @@ if __name__ == '__main__':
         #    network_seq.append(pickle.loads(pickle.dumps(net_for_pruning)))
         init_param_nmb = sum([param.nelement() for param in net_for_pruning.parameters()])
 
-        action_seq = torch.full([opt.batch_size, 1, 107], -1.0)
-        state_seq = torch.full([opt.batch_size, 6, 107], -1.0)
+        action_seq = torch.full([opt.batch_size, 1, opt.n_prunable_layers], -1.0)
+        state_seq = torch.full([opt.batch_size, 6, opt.n_prunable_layers], -1.0)
 
         actions = []
         states = []
@@ -188,7 +193,7 @@ if __name__ == '__main__':
 
         for layer_i in range(network_size):
 
-            if layer_i in layers_for_pruning:
+            if layer_i in layers_for_pruning: #todo
                 #print("Pruning layer ", layer_cnt, layer_i)
                 sequential_size = len(net_for_pruning.module_list[layer_i])
                 layer = [net_for_pruning.module_list[layer_i][j] for j in range(sequential_size) if isinstance(net_for_pruning.module_list[layer_i][j], nn.Conv2d)]
@@ -198,11 +203,12 @@ if __name__ == '__main__':
                 #state_seq = Variable(get_state2(state_seq, sparsity_prev, layer, layer_cnt), requires_grad=True)
                 state_seq = get_state2(state_seq, sparsity_prev, layer, layer_cnt)
 
-                data = state_seq[:,-1, :].view([opt.batch_size, -1]).type(torch.float32).to(opt.device)
-                #data = state_seq.view([opt.batch_size, -1]).type(torch.float32).to(opt.device)
+                #data = state_seq[:,-1, :].view([opt.batch_size, -1]).type(torch.float32).to(opt.device)
+                #todo data = state_seq.view([opt.batch_size, -1]).type(torch.float32).to(opt.device)
+                data = state_seq.view([opt.batch_size, -1]).type(torch.float32).to(opt.device)
 
 
-                #print("data req grad", layer_cnt, state_seq.requires_grad)
+                print(f"data in main {data.shape}")
 
                 probs, action_dist, log_softmax = actorNet(data)
                 q_value = criticNet(data)
@@ -231,14 +237,24 @@ if __name__ == '__main__':
 
 
                 # Get the error for every sample in the batch
-                spn_input_data = torch.cat((action_seq, state_seq[:,-1, :].unsqueeze(1)), dim=1).view([opt.batch_size, -1]).type(torch.float32).to(opt.device)
-                spn_tgt = torch.tensor([[1.0], [-1.0]]).expand(-1, opt.batch_size).permute(1, 0).type(torch.float32).to(opt.device)
+                #errorNet_input_data = torch.cat((action_seq, state_seq[:, -1, :].unsqueeze(1)), dim=1).view(
+                #    [opt.batch_size, -1]).type(torch.float32).to(opt.device)
+                #prediction = spn(errorNet_input_data)
+
+
+                print(f"state_seq in main: {state_seq.shape}")
+                spn_input_data = torch.cat((torch.cat((action_seq, state_seq[:, :4, :]), dim=1), state_seq[:,-1, :].unsqueeze(1)), dim=1).permute(0,2,1).type(torch.float32).to(opt.device)
+                #spn_input_data = torch.cat((action_seq, state_seq[:, -1:, :]), dim=1).permute(0,2,1).type(torch.float32).to(opt.device)
+                print(f"spn_input_data in main: {spn_input_data.shape} {spn_input_data.device}")
                 #print(f"{spn_input_data.shape} {spn_tgt.shape}", {spn_tgt[0, :]})
-                prediction = spn(spn_input_data.unsqueeze(dim=2), spn_tgt.unsqueeze(dim=2))
-                prediction = prediction.permute(1, 0, 2)
+                prediction = spn(spn_input_data)
+                prediction = prediction.permute(0, 1)
+                spn_input_data  = spn_input_data.cpu()
+                print(f"spn_input_data after detach: {spn_input_data.device}")
                 #if errorNet_input_data[0,40] == -1.0 and errorNet_input_data[0,0] and errorNet_input_data[0,20] == -1.0:
                 sparsity, error = prediction[:,0].squeeze(), prediction[:,1].squeeze()
                 errors.append(error.unsqueeze(1))
+
 
                 #reward = reward_function(A=denormalize(error, 0, 1), Ta=opt.target_error, S=denormalize(sparsity, 0, 1), Ts=opt.target_spars, device=opt.device)
                 #reward = reward_function3(E=denormalize(error-error_prev, 0, 1), S=denormalize(sparsity-sparsity_prev, 0, 1), Te=opt.target_error, Ts=opt.target_spars, saprs_coef=opt.spars_coef, err_coef=opt.err_coef, device=opt.device)

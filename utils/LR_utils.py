@@ -129,9 +129,9 @@ def get_prunable_layers_yolov4(model, detection_layers):
     index_list = []
     network_size = len(model.module_list)
 
-    for i in network_size:
+    for i in range(network_size):
         module_def = model.module_defs[i]
-        if module_def["type"] in ["route", "shortcut", "upsample", "maxpool", "yolo"] or layer_index in detection_layers:
+        if module_def["type"] in ["route", "shortcut", "upsample", "maxpool", "yolo"] or i in detection_layers:
             continue
         else:
             index_list.append(i)
