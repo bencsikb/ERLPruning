@@ -15,6 +15,8 @@ class RLLogger():
         self.log_dir = os.path.join(log_dir, test_case)
         self.test_case = test_case
         if not os.path.exists(self.log_dir): os.mkdir(self.log_dir)
+        self.log_dir = os.path.join(self.log_dir, "logs")
+        if not os.path.exists(self.log_dir): os.mkdir(self.log_dir)
 
     def log_settings(self, opt, settings_dict: dict):
         path = os.path.join(self.log_dir, "settings.txt")
