@@ -39,11 +39,11 @@ def create_summary_dataframe(labelspath): #, savepath, binwidth, threshold):
     Creates a summary datframe of the samples.
     :param labelspath: path to the labels folder
     :return: dataframe with the following information:
-             "spars", "dmap", "drec", "dprec", "file", "last pruned layer"
+             "spars", "dmap", "drec", "dprec", "file", "last pruned layer" --> spars and smap are denormalized!
     """
 
     state_names = ['alpha', 'in_ch', 'out_ch', 'kernel', 'stride', 'pad', 'spars']
-    samples_df = pd.DataFrame(columns=["spars", "dmap", "drec", "dprec", "file", "last pruned layer"])
+    samples_df = pd.DataFrame(columns=["spars", "dmap", "file", "last pruned layer"]) # pd.DataFrame(columns=["spars", "dmap", "drec", "dprec", "file", "last pruned layer"])
 
     samples = os.listdir(labelspath)
 
@@ -58,9 +58,9 @@ def create_summary_dataframe(labelspath): #, savepath, binwidth, threshold):
         # Get the fist row where kernel is not -1
         last_pruned_layer = state_df[(state_df.kernel > -1.0)].index[-1] + 1
 
-        samples_df.loc[len(samples_df)] = [spars, dmap, drec, dprec, sample, last_pruned_layer]
+        samples_df.loc[len(samples_df)] = [denormalize(spars, 0, 1), denormalize(dmap, 0, 1), sample, last_pruned_layer]
 
-    convert_dict = {'spars': float, 'dmap': float, 'drec': float, 'dprec': float, 'file': str, 'last pruned layer': int}
+    convert_dict = {'spars': float, 'dmap': float, 'file': str, 'last pruned layer': int} # {'spars': float, 'dmap': float, 'drec': float, 'dprec': float, 'file': str, 'last pruned layer': int}
     samples_df = samples_df.astype(convert_dict)
     print(samples_df)
 
@@ -79,14 +79,15 @@ def condition1(samples_df, dmap_thresh1, dmap_thresh2, layer_thresh):
     print(f"Number of samples satisfying the condition: {cnt}")
     return cnt
 
+"""
 def hist_w_condition(samples_df, layer_thresh, savepath):
-    """
-    Creates a histogram of the dmaps above a given layer (layer_thresh).
-    :param samples_df:
-    :param layer_thresh:
-    :param savepath:
-    :return:
-    """
+    
+    ## Creates a histogram of the dmaps above a given layer (layer_thresh).
+    ## :param samples_df:
+    #:param layer_thresh:
+    #:param savepath:
+    #:return:
+    
 
     bins = np.arange(-1, 1, 0.2)
     values = np.zeros(bins.shape[0]-1)
@@ -102,6 +103,31 @@ def hist_w_condition(samples_df, layer_thresh, savepath):
     plt.xlabel("dmap")
     plt.ylabel("number of samples")
     plt.savefig(os.path.join(savepath, f"dmap_distribution_layer_{layer_thresh}.png"))
+"""
+
+def hist_w_condition(samples_df, savepath, layer_thresh, dmap_thresh, binwidth):
+    """
+        Creates a histogram of the data labels (dperf, sparsity) with given conditions.
+        Only those samples are considered in the histogram that meet these conditions:
+            Condition1: at least layer_thresh layers are already pruned in the sample
+            Condition2: dmap is smaller than dmap_thresh
+
+    :param samples_df (pd.DataFrame): summary dataframe with denormalized dpars and dmap values
+    :param savepath: path to the folder where the resulted figures should be saved
+    :param layer_thresh (int):
+    :param dmap_thresh (float): denormalized
+    :param binwidth (float):
+    """
+
+    target_df = samples_df[(samples_df['last pruned layer']>layer_thresh) & (samples_df['dmap']<dmap_thresh)]
+    bins = np.arange(0, 1, binwidth)
+
+    create_hist(denormalize(target_df['spars'].tolist(), 0, 1), bins, f"Distribution of Label: sparsity with layer_thresh={layer_thresh} and dmap_thresh={dmap_thresh}", "sparsity", "number of samples")
+    plt.savefig(os.path.join(savepath, f"label_spars_distribution_l{layer_thresh}_dm{dmap_thresh}.png"))
+
+    create_hist(denormalize(target_df['dmap'].tolist(), 0, 1), bins, f"Distribution of Label: dmap with layer_thresh={layer_thresh} and dmap_thresh={dmap_thresh}", "dmap", "number of samples")
+    plt.savefig(os.path.join(savepath, f"label_dmap_distributionl_l{layer_thresh}_dm{dmap_thresh}.png"))
+
 
 
 if __name__ == '__main__':
@@ -117,4 +143,4 @@ if __name__ == '__main__':
         samples_df.to_csv(os.path.join(path, "samples_df.csv"))
 
     #spn_label_distrubution(samples_df, path, binwidth=0.1)
-    hist_w_condition(samples_df, 80, path)
+    hist_w_condition(samples_df, path, layer_thresh=80, dmap_thresh=0.2, binwidth=0.1)
