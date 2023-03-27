@@ -41,23 +41,23 @@ if __name__ == '__main__':
     parser.add_argument('--yolo_layers', default=[138, 149, 160])
     parser.add_argument('--device', type=str, default='cuda')
     parser.add_argument('--episodeNum', type=int, default=2000)
-    parser.add_argument('--batch-size', type=int, default=4096)
-    parser.add_argument('--ent_coef', type=int, default=5e-3)
-    parser.add_argument('--actor-base-lr', type=int, default=1e-3)
+    parser.add_argument('--batch-size', type=int, default=1024)
+    parser.add_argument('--ent_coef', type=int, default=1e-4)
+    parser.add_argument('--actor-base-lr', type=int, default=1e-4)
     parser.add_argument('--actor-last-lr', type=int, default=5e-8)
     parser.add_argument('--critic-base-lr', type=int, default=0.01)
-    parser.add_argument('--test-case', type=str, default='old_w_rewbp')
+    parser.add_argument('--test-case', type=str, default='trans_11')
     parser.add_argument('--save-interval', type=int, default=50)
     # parser.add_argument('--ppo-eps-base', type=int, default=4)
     # parser.add_argument('--ppo-eps-last', type=int, default=4)
-    parser.add_argument('--n-prunable-layers', type=int, default=44)
+    parser.add_argument('--n-prunable-layers', type=int, default=107)
 
     # For reward function
     parser.add_argument('--reward-func', type=str, default="reward_function")
-    parser.add_argument('--err_coef', type=int, default=1.1)
+    parser.add_argument('--err_coef', type=int, default=1.5)
     parser.add_argument('--spars_coef', type=int, default=1)
     parser.add_argument('--target_error', type=int, default=0.2)
-    parser.add_argument('--target_spars', type=int, default=0.6)
+    parser.add_argument('--target_spars', type=int, default=0.4)
     parser.add_argument('--beta', type=int, default=5)
     # parser.add_argument('--A', type=int, default=2)
     # parser.add_argument('--B', type=int, default=1)
@@ -75,8 +75,8 @@ if __name__ == '__main__':
     parser.add_argument('--network_forpruning',
                         default="/data/blanka/ERLPruning/runs/YOLOv4_KITTI/exp_kitti_tvt/weights/best.pt")  # pretrained
     parser.add_argument('--cfg', type=str, default='cfg/yolov4_kitti.cfg', help='model.yaml path')
-    parser.add_argument('--spn', type=str, default='/data/blanka/checkpoints/pruning_error_pred/test_97_2534.pth')
-    # parser.add_argument('--spn', type=str, default='/data/blanka/ERLPruning/runs/SPN/manual_transformer_all52_14/weights/best.pt')
+    #todo parser.add_argument('--spn', type=str, default='/data/blanka/checkpoints/pruning_error_pred/test_97_2534.pth')
+    parser.add_argument('--spn', type=str, default='/data/blanka/ERLPruning/runs/SPN/manual_transformer_all52_14/weights/best.pt')
     parser.add_argument('--pretrained', type=str, default='')
 
     # Destinations
@@ -198,7 +198,7 @@ if __name__ == '__main__':
 
         for layer_i in range(network_size):
 
-            if layer_i in opt.layers_for_pruning:  # todo if old_mdel opt.layers_for_pruning
+            if layer_i in layers_for_pruning:  # todo if old_mdel opt.layers_for_pruning
                 # print("Pruning layer ", layer_cnt, layer_i)
                 sequential_size = len(net_for_pruning.module_list[layer_i])
                 layer = [net_for_pruning.module_list[layer_i][j] for j in range(sequential_size) if
@@ -240,14 +240,12 @@ if __name__ == '__main__':
                 print(denormalize(action_seq[0, :, :], 0.0, 2.2))
 
                 # Get the error for every sample in the batch
-                errorNet_input_data = torch.cat((action_seq, state_seq[:, -1, :].unsqueeze(1)), dim=1).view(
-                    [opt.batch_size, -1]).type(torch.float32).to(opt.device)
-                prediction = spn(errorNet_input_data)
+                ## errorNet_input_data = torch.cat((action_seq, state_seq[:, -1, :].unsqueeze(1)), dim=1).view(
+                ##    [opt.batch_size, -1]).type(torch.float32).to(opt.device)
+                ## prediction = spn(errorNet_input_data)
 
-                """
                 print(f"state_seq in main: {state_seq.shape}")
-                spn_input_data = torch.cat(
-                    (torch.cat((action_seq, state_seq[:, :4, :]), dim=1), state_seq[:, -1, :].unsqueeze(1)),
+                spn_input_data = torch.cat((torch.cat((action_seq, state_seq[:, :4, :]), dim=1), state_seq[:, -1, :].unsqueeze(1)),
                     dim=1).permute(0, 2, 1).type(torch.float32).to(opt.device)
                 # spn_input_data = torch.cat((action_seq, state_seq[:, -1:, :]), dim=1).permute(0,2,1).type(torch.float32).to(opt.device)
                 print(f"spn_input_data in main: {spn_input_data.shape} {spn_input_data.device}")
@@ -255,18 +253,16 @@ if __name__ == '__main__':
                 prediction = spn(spn_input_data)
                 prediction = prediction.permute(0, 1)
                 spn_input_data = spn_input_data.cpu()
-                print(f"spn_input_data after detach: {spn_input_data.device}")
-                """
 
                 # if errorNet_input_data[0,40] == -1.0 and errorNet_input_data[0,0] and errorNet_input_data[0,20] == -1.0:
                 sparsity, error = prediction[:, 0].squeeze(), prediction[:, 1].squeeze()
                 # sparsity, error = torch.full([opt.batch_size], -1.0).cuda(), torch.full([opt.batch_size], -1.0).cuda()
+                error = error.detach()  # todo
+                sparsity = sparsity.detach()  # todo
 
                 errors.append(error.detach().unsqueeze(1))
                 ## print(f"error in main {error.shape}")
 
-                ## error = error.detach()
-                ## sparsity = sparsity.detach()
 
                 # reward = reward_function(A=denormalize(error, 0, 1), Ta=opt.target_error, S=denormalize(sparsity, 0, 1), Ts=opt.target_spars, device=opt.device)
                 # reward = reward_function3(E=denormalize(error-error_prev, 0, 1), S=denormalize(sparsity-sparsity_prev, 0, 1), Te=opt.target_error, Ts=opt.target_spars, saprs_coef=opt.spars_coef, err_coef=opt.err_coef, device=opt.device)
@@ -305,7 +301,7 @@ if __name__ == '__main__':
                 entropies.append(entropy)  # .detach())
                 ## list2FloatTensor(entropies)
                 actions.append(action_seq.clone().detach())
-                ## states.append(state_seq.clone())
+                states.append(state_seq.clone().detach())
                 # rewards.append(denormalize(reward, 0, 1))
                 # values.append(denormalize(q_value, 0, 1))
                 rewards.append(reward)  # .detach())
@@ -369,8 +365,8 @@ if __name__ == '__main__':
 
         # print(f"Reward device: {rewards[0].device}")
         # break
-        reward_backprop = list2FloatTensor(rewards).mean()
-        (-reward_backprop).backward()
+        #todo reward_backprop = list2FloatTensor(rewards).mean()
+        #todo (-reward_backprop).backward()
 
         actor_optimizer.step()
         critic_optimizer.step()
@@ -379,25 +375,28 @@ if __name__ == '__main__':
         print(critic_loss)
         print(actor_loss)
 
-        ## critic_loss.detach_()
-        ## actor_loss.detach_()
-        ## final_loss.detach_()
+        critic_loss.detach_()
+        actor_loss.detach_()
+        final_loss.detach_()
+
+        # Get the nest results from the batch
+
+
 
         # LOGGING
-
         if opt.variable_logflag:
 
             # print(actions[0])
             rl_logger.log_variables(denormalize(actions[-1][:, 0, :], 0, 2.2), nameof(actions), episode=None)
             rl_logger.log_variables(list2FloatTensor(values), nameof(values), episode=None)
-            ## rl_logger.log_variables(denormalize(list2FloatTensor(errors)[:, :, 0], 0, 1), nameof(error), episode=None)
-            ## rl_logger.log_variables(denormalize(states[-1][:, -1, :], 0, 1), nameof(sparsity), episode=None)
+            rl_logger.log_variables(denormalize(list2FloatTensor(errors)[:, :, 0], 0, 1), nameof(error), episode=None)
+            rl_logger.log_variables(denormalize(states[-1][:, -1, :], 0, 1), nameof(sparsity), episode=None)
             ## rl_logger.log_variables(list2FloatTensor(rewards_list)[:, :, 0], nameof(rewards_list), episode=None)
             rl_logger.log_variables(returns, nameof(returns), episode=None)
 
-            ## tb_logger.log_variables(episode, denormalize(states[-1][:, -1, :], 0, 1), nameof(sparsity), dim=0)
+            tb_logger.log_variables(episode, denormalize(states[-1][:, -1, :], 0, 1), nameof(sparsity), dim=0)
             tb_logger.log_variables(episode, denormalize(actions[-1][:, 0, :], 0, 2.2), nameof(actions), dim=0)
-            ## tb_logger.log_variables(episode, denormalize(list2FloatTensor(errors)[:, :, 0], 0, 1), nameof(error), dim=1)
+            tb_logger.log_variables(episode, denormalize(list2FloatTensor(errors)[:, :, 0], 0, 1), nameof(error), dim=1)
             ## tb_logger.log_variables(episode, list2FloatTensor(rewards_list)[:, :, 0], nameof(rewards_list), dim=1)
             if opt.PPO_flag: tb_logger.log_scalar(episode, eps, nameof(eps))
 
@@ -405,8 +404,7 @@ if __name__ == '__main__':
             # tb_logger.log_variables(episode, list2FloatTensor(dSs)[:,:,0], nameof(dS), dim=1)
 
         # Save parameters
-        rl_logger.log_results(opt.results_save_path, episode, critic_loss.item(), actor_loss.item(),
-                              list2FloatTensor(rewards).mean().item())
+        rl_logger.log_results(opt.results_save_path, episode, critic_loss.item(), actor_loss.item(), list2FloatTensor(rewards).mean().item())
         rl_logger.log_learning_rate(episode, lr_sched)
         tb_logger.log_results(episode, critic_loss.item(), actor_loss.item(), list2FloatTensor(rewards).mean().item())
         tb_logger.log_learning_rate(episode, lr_sched)
@@ -426,7 +424,7 @@ if __name__ == '__main__':
         # Save the checkpoint with episode
         if episode % opt.save_interval == 0:
             ckp_save_path = os.path.join(opt.ckpt_save_path, opt.test_case)
-            torch.save(checkpoint, os.path.join(ckp_save_path, f"{episode}.pth)"))
+            torch.save(checkpoint, os.path.join(ckp_save_path, f"{episode}.pth"))
 
         episode += 1
         print("Episode time ", time.time() - start_time_episode)
