@@ -256,7 +256,7 @@ if __name__ == '__main__':
         create_dataloader(val_img_path, val_label_path, imgsz, opt.batch_size, 32, opt, hyp=None, augment=False,
                           cache=False, rect=False)[0]
     # Load model
-    model = Darknet(opt.cfg).to('cuda')
+    model = Darknet(opt.cfg).to(opt.device)
     ckpt = torch.load(opt.weights)
     ckpt['model'] = {k: v for k, v in ckpt['model'].items() if model.state_dict()[k].numel() == v.numel()}
     model.load_state_dict(ckpt['model'], strict=False)
@@ -295,7 +295,7 @@ if __name__ == '__main__':
         sigma = 0.4
         unsorted_probs = generate_gaussian_probs(mu, sigma, len(alphas))
 
-        model_init = Darknet(opt.cfg).to('cuda')
+        model_init = Darknet(opt.cfg).to(opt.device)
         ckpt = torch.load(opt.weights)
         ckpt['model'] = {k: v for k, v in ckpt['model'].items() if model_init.state_dict()[k].numel() == v.numel()}
         model_init.load_state_dict(ckpt['model'], strict=False)
@@ -308,7 +308,7 @@ if __name__ == '__main__':
 
             start_time = time.time()
 
-            model = Darknet(opt.cfg).to('cuda')
+            model = Darknet(opt.cfg).to(opt.device)
             model.load_state_dict(ckpt['model'], strict=False)
 
             # Load the dataframe containing the already existing samples
@@ -367,7 +367,7 @@ if __name__ == '__main__':
 
             print(alpha_seq)
             model, parser = prune_network(model, opt.layers_to_skip, layer_index, alpha_seq, dataset_make=True)
-            model.to('cuda')
+            model.to(opt.device)
             #with open(f"/home/blanka/ERLPruning/sandbox/stupidmodel{layer_index}.txt", "w") as f:
             #    f.write(str(model))
 
