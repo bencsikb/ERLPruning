@@ -25,11 +25,20 @@ class RLLogger():
             file.write("\n")
             file.write(json.dumps(settings_dict))
 
-    def log_results(self, results_dir, episode, critic_loss, actor_loss, reward):
+    def log_results(self, episode, critic_loss, actor_loss, reward):
         # path = os.path.join(results_dir, self.test_case)
         path = os.path.join(self.log_dir, "results.txt")
         with open(path, 'a+') as f:
             f.write(str(episode) + " " + str(critic_loss) + " " + str(actor_loss) + " " + str(reward) + "\n")
+
+    def log_bests(self, episode, error, spars, actions):
+        path = os.path.join(self.log_dir, "best_results.txt")
+        with open(path, 'a+') as f:
+            f.write(str(episode) + " " + str(error) + " " + str(spars) + "\n")
+
+        path = os.path.join(self.log_dir, "best_actions.txt")
+        with open(path, 'a+') as f:
+            f.write(str(episode) + " " + str(actions) + "\n")
 
     def log_learning_rate(self, episode, lr_sched):
         learning_rate = lr_sched.get_lr()[0]
@@ -62,6 +71,16 @@ class RLLogger():
 
             f.write(str(variable) + "\n")
 
+    def log_best_samples(self, samples, episode):
+        """
+        :param sample_df (list):
+        """
+        path = os.path.join(self.log_dir, "top_samples.txt")
+        testtosave = [f"{elem}\t" for elem in samples]
+        with open(path, "a+") as f:
+            f.write(sample + "\n")
+
+
 class TensorboardLogger():
     def __init__(self, log_dir, test_case):
         super().__init__()
@@ -76,6 +95,11 @@ class TensorboardLogger():
         self.tb_writer.add_scalar(tags[0], critic_loss, episode)
         self.tb_writer.add_scalar(tags[1], actor_loss, episode)
         self.tb_writer.add_scalar(tags[2], reward, episode)
+
+    def log_bests(self, episode, error, spars):
+        tags = ['bests/error', 'bests/spars']
+        self.tb_writer.add_scalar(tags[0], error, episode)
+        self.tb_writer.add_scalar(tags[1], spars, episode)
 
     def log_probs(self, probs, episode, layer_cnt):
         """
