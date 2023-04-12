@@ -18,6 +18,7 @@ def validate(dataloader, model, criterion_dperf, criterion_spars, margin, device
     model.eval()
     metrics_sum_dperf = np.zeros(6)
     metrics_sum_spars = np.zeros(6)
+    max_error_dperf, max_error_spars = 0, 0
 
     running_loss = 0
     cnnt = 0
@@ -48,8 +49,8 @@ def validate(dataloader, model, criterion_dperf, criterion_spars, margin, device
         #metrics_sum_spars += calc_metrics(label_gt[:, 0, 0], prediction[:, 0, 0], margin=margin)
         #metrics_sum_dperf += calc_metrics(label_gt[:, 1, 0], prediction[:, 1, 0], margin=margin)
 
-        metrics_spars = calc_metrics(label_gt[:, 0], prediction[:, 0], margin=opt.margin)
-        metrics_dperf = calc_metrics(label_gt[:, 1], prediction[:, 1], margin=opt.margin)
+        metrics_spars = calc_metrics(label_gt[:, 0], prediction[:, 0], margin=margin)
+        metrics_dperf = calc_metrics(label_gt[:, 1], prediction[:, 1], margin=margin)
         metrics_sum_spars += metrics_spars
         metrics_sum_dperf += metrics_dperf
         curr_max_error_spars = metrics_spars[3]
