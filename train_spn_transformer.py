@@ -19,6 +19,7 @@ from models.error_pred_network import errorNet, errorNet2
 import torch.utils.data
 from utils.torch_utils import init_seeds as init_seeds_manual
 from models.models import *
+from utils.logger import BasicLogger
 #from utils.losses import LogCoshLoss, NegativeWeightedMSELoss
 from utils.losses import LogCoshLoss
 from utils.optimizers import RAdam, Lamb
@@ -38,8 +39,15 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
     last = wdir + 'last.pt'
     best = wdir + 'best.pt'
     results_file = str(log_dir / 'results.txt')
+    opt_file = str(log_dir / 'logs.txt')
+    model_file = str(log_dir / 'model.txt')
     epochs, batch_size =  opt.epochs, opt.batch_size,
     init_seeds_manual(42)
+
+    # Save settings and model
+    settings_dict = {"criterion_dperf": str(criterion_dperf), "criterion_spars": str(criterion_spars), "optimizer": str(optimizer)}
+    txt_logger.log_settings(opt, settings_dict)
+    txt_logger.log_model(model)
 
 
     losses, errors, precisions, sign_precisions = [], [], [], []
@@ -52,6 +60,7 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
 
         metrics_sum_dperf = np.zeros(6)
         metrics_sum_spars = np.zeros(6)
+        max_error_dperf, max_error_spars = 0, 0
 
         running_loss = 0
         cnnt = 0
@@ -67,44 +76,52 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
             optimizer.zero_grad()
 
             #data = torch.cat((data[:, :107], data[:, -107:]), dim=1) #  TODO  use only alpha and spars as state features
-            #data = data.unsqueeze(dim=2) # embedding size --> 1 [batch_size, n_features, embedding_size]
-            # data = torch.cat((data[:, :, :1], data[:, :, -1:]), dim=2)
+            # data = data.unsqueeze(dim=2) # embedding size --> 1 [batch_size, n_features, embedding_size]
+            #data = torch.cat((data[:, :, :1], data[:, :, -1:]), dim=2)
             data = torch.cat((data[:, :, :5], data[:, :, -1:]), dim=2)
 
             #label_gt = label_gt.unsqueeze(dim=2) # [batch_size, n_labels, 1]
             print(f"data in train after cutting out features: {data.shape}")
-            #prediction = model(data, label_gt, tgt_mask
 
+            tgt = torch.ones(label_gt.shape).cuda()
+            print(f"data, ttgt {data.device} {tgt.device}")
+            #prediction = model(data.unsqueeze(2), label_gt.unsqueeze(2))
+            #final_linear = torch.nn.Linear(opt.dim_model, 2).to(opt.device)
+            #prediction = final_linear(prediction[:, 0, :])
             prediction = model(data)
             prediction = prediction.permute(0, 1) # --> [batch_size, n_lables, sequence_length]
             print(f"label, prediction in train: {label_gt.shape}, {prediction.shape}")
 
-            # loss = criterion_spars(denormalize(label_gt[:, 0, 0], 0, 1),  denormalize(prediction[:, 0, 0], 0, 1)) \
+            #loss = criterion_spars(denormalize(label_gt[:, 0, 0], 0, 1),  denormalize(prediction[:, 0, 0], 0, 1)) \
             #       + criterion_dperf(denormalize(label_gt[:, 1, 0], 0, 1), denormalize(prediction[:, 1, 0], 0, 1))
 
             loss = criterion_spars(denormalize(label_gt[:, 0], 0, 1), denormalize(prediction[:, 0], 0, 1)) \
-                   + criterion_dperf(denormalize(label_gt[:, 1], 0, 1), denormalize(prediction[:, 1], 0, 1))
+                   + opt.dperf_loss_factor * criterion_dperf(denormalize(label_gt[:, 1], 0, 1), denormalize(prediction[:, 1], 0, 1))
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             running_loss += loss.cpu().item()
             # err, prec, neg_err, neg_corr, negsign_prec = calc_precision(error_gt, error_pred)
-            # metrics_sum_spars += calc_metrics(label_gt[:, 0, 0], prediction[:, 0, 0], margin=opt.margin)
-            # metrics_sum_dperf += calc_metrics(label_gt[:, 1, 0], prediction[:, 1, 0], margin=opt.margin)
-            metrics_sum_spars += calc_metrics(label_gt[:, 0], prediction[:, 0], margin=opt.margin)
-            metrics_sum_dperf += calc_metrics(label_gt[:, 1], prediction[:, 1], margin=opt.margin)
+            #metrics_sum_spars += calc_metrics(label_gt[:, 0, 0], prediction[:, 0, 0], margin=opt.margin)
+            #metrics_sum_dperf += calc_metrics(label_gt[:, 1, 0], prediction[:, 1, 0], margin=opt.margin)
+            metrics_spars = calc_metrics(label_gt[:, 0], prediction[:, 0], margin=opt.margin)
+            metrics_dperf = calc_metrics(label_gt[:, 1], prediction[:, 1], margin=opt.margin)
+            metrics_sum_spars +=  metrics_spars
+            metrics_sum_dperf += metrics_dperf
+            curr_max_error_spars = metrics_spars[3]
+            curr_max_error_dperf = metrics_dperf[3]
+            if curr_max_error_spars > max_error_spars : max_error_spars = curr_max_error_spars
+            if curr_max_error_dperf > max_error_dperf : max_error_dperf = curr_max_error_dperf
+
 
         # Calculate training metrics
         running_loss /= len(dataloader)
         metrics_avg_dperf = metrics_sum_dperf / len(dataloader)
         metrics_avg_spars = metrics_sum_spars / len(dataloader)
+        metrics_avg_dperf[3] = max_error_dperf
+        metrics_avg_spars[3] = max_error_spars
 
-
-        # metrics_avg[0, 2:4] = metrics_sum[0, 2:4] /len(dataloader)   # error, precision
-        # gt_negatives = metrics_sum[0, 7]
-        # print(gt_negatives)
-        # metrics_avg[0, 4:7] = metrics_sum[0, 4:7]/gt_negatives   # neg_error, negsign_hits, negsign_precision
 
         # VALIDATION
 
@@ -174,18 +191,29 @@ if __name__ == '__main__':
     parser.add_argument('--device', default='cuda', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--pretrained', type=str, default='')
     parser.add_argument('--smalldata', type=bool, default=False)
-    parser.add_argument('--test-case', type=str, default='manual_transformer_11')
+    parser.add_argument('--test-case', type=str, default='manual_transformer_all54_05')
     #parser.add_argument('--test-case', type=str, default='test_90_rep_2')
 
-    parser.add_argument('--epochs', type=int, default=1000)
+    parser.add_argument('--epochs', type=int, default=2000)
     parser.add_argument('--val_interval', type=int, default=1)
     #parser.add_argument('--batch-size', type=int, default=32768)
-    parser.add_argument('--batch-size', type=int, default=512)
-    parser.add_argument('--margin', type=int, default=0.02)
+    parser.add_argument('--batch-size', type=int, default=64)
+    parser.add_argument('--margin', type=float, default=0.02)
+
+    # Transfromer params
+    parser.add_argument('--nheads', type=int, default=2)
+    parser.add_argument('--nlayers', type=int, default=2)
+    parser.add_argument('--dim_ff', type=int, default=2048)
+    parser.add_argument('--dropout', type=float, default=0.0)
+    parser.add_argument('--dim_model', type=int, default=32)
+    parser.add_argument('--dperf-loss-factor', default=1)
+    parser.add_argument('--spars-loss-factor', default=1)
+
 
     opt = parser.parse_args()
 
     tb_writer = SummaryWriter(log_dir=os.path.join(opt.logdir, opt.test_case))
+    txt_logger = BasicLogger(log_dir=opt.logdir, test_case=opt.test_case)
     with open(opt.data) as f:
         data_dict = yaml.load(f, Loader=yaml.FullLoader)  # model dict
 
@@ -222,21 +250,20 @@ if __name__ == '__main__':
     else:
         print("new model")
         epoch = 0
-
         """
         model = Transformer(
             # num_tokens=4, dim_model=8, num_heads=2, num_encoder_layers=3, num_decoder_layers=3, dropout_p=0.1
-            num_tokens = 1, dim_model = 10, num_heads = 2, num_encoder_layers = 3, num_decoder_layers = 3, dropout_p = 0.05
+            num_tokens =2, dim_model = opt.dim_model, num_heads = opt.nheads, num_encoder_layers = opt.nlayers, num_decoder_layers = opt.nlayers, dropout_p = 0.05
         ).to(opt.device)        # model.apply(init_weights)
         """
-        model = Transformer(nhead=6, dim_model=6, out_size=2).to(opt.device)
-        #model = nn.TransformerEncoderLayer(512, 8, dropout=0)
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
-        # optimizer = Lamb(model.parameters(), lr=0.001, weight_decay=1e-5)
+        model = Transformer(nhead=opt.nheads, nlayers=opt.nlayers, dim_model=opt.dim_model, dim_ff=opt.dim_ff,  out_size=2, dropout=opt.dropout).to(opt.device)
+        #model = nn.Transformer(d_model=opt.dim_model, nhead=opt.nheads, num_encoder_layers=opt.nlayers, num_decoder_layers=opt.nlayers, dim_feedforward=opt.dim_ff, dropout=opt.dropout).to(opt.device)
+        # optimizer = torch.optim.Adam(model.parameters(), lr=0.0005, weight_decay=1e-5)
+        optimizer = Lamb(model.parameters(), lr=0.001, weight_decay=1e-5)
         lr_sched = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=opt.epochs, eta_min=0.000005,
                                                               last_epoch=-1)
-        criterion_dperf = LogCoshLoss().cuda()
-        criterion_spars = LogCoshLoss().cuda()  # nn.MSELoss().cuda()
+        criterion_dperf =  LogCoshLoss().cuda()
+        criterion_spars =  LogCoshLoss().cuda()  # nn.MSELoss().cuda()
         # criterion_err = NegativeWeightedMSELoss(5).cuda()
         # criterion_spars = torch.nn.MSELoss().cuda()
 
