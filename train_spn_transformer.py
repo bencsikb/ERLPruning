@@ -21,7 +21,7 @@ from utils.torch_utils import init_seeds as init_seeds_manual
 from models.models import *
 from utils.logger import BasicLogger
 #from utils.losses import LogCoshLoss, NegativeWeightedMSELoss
-from utils.losses import LogCoshLoss
+from utils.losses import LogCoshLoss, LP_loss
 from utils.optimizers import RAdam, Lamb
 from test_spn_transformer import validate
 #from transformer import Transformer
@@ -95,6 +95,7 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
             #loss = criterion_spars(denormalize(label_gt[:, 0, 0], 0, 1),  denormalize(prediction[:, 0, 0], 0, 1)) \
             #       + criterion_dperf(denormalize(label_gt[:, 1, 0], 0, 1), denormalize(prediction[:, 1, 0], 0, 1))
 
+            # todo pow
             loss = criterion_spars(denormalize(label_gt[:, 0], 0, 1), denormalize(prediction[:, 0], 0, 1)) \
                    + opt.dperf_loss_factor * criterion_dperf(denormalize(label_gt[:, 1], 0, 1), denormalize(prediction[:, 1], 0, 1))
 
@@ -191,7 +192,7 @@ if __name__ == '__main__':
     parser.add_argument('--device', default='cuda', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--pretrained', type=str, default='')
     parser.add_argument('--smalldata', type=bool, default=False)
-    parser.add_argument('--test-case', type=str, default='manual_transformer_all54_05')
+    parser.add_argument('--test-case', type=str, default='manual_transformer_all53_08_augm')
     #parser.add_argument('--test-case', type=str, default='test_90_rep_2')
 
     parser.add_argument('--epochs', type=int, default=2000)
@@ -262,8 +263,8 @@ if __name__ == '__main__':
         optimizer = Lamb(model.parameters(), lr=0.001, weight_decay=1e-5)
         lr_sched = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=opt.epochs, eta_min=0.000005,
                                                               last_epoch=-1)
-        criterion_dperf =  LogCoshLoss().cuda()
-        criterion_spars =  LogCoshLoss().cuda()  # nn.MSELoss().cuda()
+        criterion_dperf = LogCoshLoss().cuda()
+        criterion_spars = LogCoshLoss().cuda()  # nn.MSELoss().cuda()
         # criterion_err = NegativeWeightedMSELoss(5).cuda()
         # criterion_spars = torch.nn.MSELoss().cuda()
 
