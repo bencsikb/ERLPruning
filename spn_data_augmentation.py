@@ -1,30 +1,47 @@
 import pandas as pd
 import os
 import numpy as np
+import yaml
+import torch
 
 from utils.LR_utils import normalize, denormalize
+from utils.spn_utils import calc_metrics
+from utils.datasets import create_pruning_dataloader
+
 
 class SPNAugmenter():
-    def __init__(self, label_path, state_path, out_path, name_cnt, n, read_df=False):
+    def __init__(self, label_path, state_path, out_path, spn_path, spn_data_path, name_cnt, n, error_thresh, read_df=False, custom=False, device="cuda"):
 
         self.__label_path = label_path
         self.__state_path = state_path
+        self.__out_path = out_path
+        self.__spn_path = spn_path
+        self.__spn_data_path = spn_data_path
         self.__name_cnt = name_cnt
         self.__n = n
+        self.__error_thresh = error_thresh
         self.__read_df = read_df
-        self.__out_path = out_path
+        self.__custom = custom
+        self.__device = device
 
     def control_augmentation(self) -> None:
         """Controls the augmentation process.
         """
-        if self.__read_df:
-            self.all_samples = pd.read_pickle("/home/blanka/ERLPruning/sandbox/train54_df.pkl")
-        else:
-            self.all_samples = self.load_samples()
-            self.all_samples.to_pickle("/home/blanka/ERLPruning/sandbox/train54_df.pkl")
 
-        self.target_samples = self.collect_target_samples(self.all_samples)
-        del self.all_samples
+        if self.__custom:
+
+            if self.__read_df:
+                self.all_samples = pd.read_pickle("/home/blanka/ERLPruning/sandbox/train54_df.pkl")
+            else:
+                self.all_samples = self.load_samples()
+                self.all_samples.to_pickle("/home/blanka/ERLPruning/sandbox/train54_df.pkl")
+
+            self.target_samples = self.collect_custom_target_samples(self.all_samples)
+            del self.all_samples
+
+        else:
+            self.target_samples = self.collect_target_samples(self.__error_thresh, self.__spn_data_path, self.__spn_path)
+
         self.augmented_samples = self.add_gauss_niose(self.target_samples, self.__n)
         del self.target_samples
         self.save_augmented_samples(self.augmented_samples, self.__out_path, self.__name_cnt)
@@ -46,7 +63,7 @@ class SPNAugmenter():
 
         return samples_df
 
-    def collect_target_samples(self, samples_df) -> pd.DataFrame:
+    def collect_custom_target_samples(self, samples_df) -> pd.DataFrame:
         """ Saves the problematic samples to a Pandas DataFrame.
         :return (pd.DataFrame): problematic samples that need to be augmented
         """
@@ -69,6 +86,49 @@ class SPNAugmenter():
 
             if condition1 or condition2 or condition3: # or condition4 or condition5:
                 new_row = pd.Series({"state": state, "label": label})
+                target_df = pd.concat([target_df, new_row.to_frame().T], ignore_index=True)
+
+        print(f"Number of problematic samples: {target_df.shape[0]}")
+
+        return target_df
+
+    def collect_target_samples(self, error_threshold, data_path, spn_path) -> pd.DataFrame:
+        """ Saves the problematic samples based on the error between the predcted and ground truth values to a Pandas DataFrame.
+        :return (pd.DataFrame): problematic samples that need to be augmented
+        """
+        target_df = pd.DataFrame(columns=['state', 'label'])
+
+        # Validation data
+        print("olaa", data_path)
+        with open(data_path, "r") as f:
+            data_dict = yaml.load(f, Loader=yaml.FullLoader)
+        data_path = data_dict['train_state']
+        label_path = data_dict['train_label']
+        dataloader, _ = create_pruning_dataloader(data_path, label_path, batch_size=1)
+
+        # Load SPN model
+        ckpt_spn = torch.load(spn_path)
+        model = ckpt_spn['model']
+        model.eval()
+
+        for batch_i, (data, label_gt) in enumerate(dataloader):
+            input_data = data.type(torch.float32).to(self.__device)
+            input_data = torch.cat((input_data[:, :, :5], input_data[:, :, -1:]), dim=2)
+            input_label_gt = label_gt.type(torch.float32).to(self.__device)
+
+            prediction = model(input_data)
+            prediction = prediction.permute(0, 1)  # --> [batch_size, n_lables, sequence_length]
+
+            # metrics_dperf = calc_metrics(input_label_gt[:, 1], prediction[:, 1], margin=0.02)
+            # max_error_dperf = metrics_dperf[3]
+
+            gt_norm = denormalize(input_label_gt[:, 1], 0, 1).item()
+            pred_norm = denormalize(prediction[:, 1], 0, 1).item()
+            abs_error_dperf = np.abs(gt_norm - pred_norm)
+
+            if abs_error_dperf > error_threshold:
+                print(f"Error = {abs_error_dperf}, gt = {gt_norm}, pred = {pred_norm}, {denormalize(data[0, :, 0], 0.0, 2.2)}")
+                new_row = pd.Series({"state": data.numpy(), "label": label_gt.numpy()})
                 target_df = pd.concat([target_df, new_row.to_frame().T], ignore_index=True)
 
         print(f"Number of problematic samples: {target_df.shape[0]}")
@@ -113,9 +173,13 @@ if __name__ == "__main__":
     state_path = "/data/blanka/DATASETS/SPN/training53/states"
     label_path = "/data/blanka/DATASETS/SPN/training53/labels"
     out_path = "/data/blanka/DATASETS/SPN/training53/augmented"
-    name_cnt = 33350
-    n = 100
+    spn_path = "/data/blanka/ERLPruning/runs/SPN/manual_transformer_all53_08_augm/weights/best.pt"
+    spn_data_path = '/home/blanka/ERLPruning/data/spndata.yaml'
+
+    name_cnt = 40050 + 350 + 250 + 200
+    n = 50
+    error_thresh = 0.15
     read_df = True
 
-    augmenter = SPNAugmenter(label_path, state_path, out_path, name_cnt, n, read_df)
+    augmenter = SPNAugmenter(label_path, state_path, out_path, spn_path,spn_data_path, name_cnt, n, error_thresh, read_df)
     augmenter.control_augmentation()
