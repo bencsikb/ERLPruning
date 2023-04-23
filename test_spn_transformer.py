@@ -49,8 +49,11 @@ def validate(dataloader, model, criterion_dperf, criterion_spars, margin, device
         #metrics_sum_spars += calc_metrics(label_gt[:, 0, 0], prediction[:, 0, 0], margin=margin)
         #metrics_sum_dperf += calc_metrics(label_gt[:, 1, 0], prediction[:, 1, 0], margin=margin)
 
-        metrics_spars = calc_metrics(label_gt[:, 0], prediction[:, 0], margin=margin)
-        metrics_dperf = calc_metrics(label_gt[:, 1], prediction[:, 1], margin=margin)
+        metrics_spars = calc_metrics(denormalize(label_gt[:, 0], 0, 1), denormalize(prediction[:, 0], 0, 1),
+                                     margin=margin)
+        metrics_dperf = calc_metrics(denormalize(label_gt[:, 1], 0, 1), denormalize(prediction[:, 1], 0, 1),
+                                     margin=margin)
+
         metrics_sum_spars += metrics_spars
         metrics_sum_dperf += metrics_dperf
         curr_max_error_spars = metrics_spars[3]

@@ -106,8 +106,8 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
             # err, prec, neg_err, neg_corr, negsign_prec = calc_precision(error_gt, error_pred)
             #metrics_sum_spars += calc_metrics(label_gt[:, 0, 0], prediction[:, 0, 0], margin=opt.margin)
             #metrics_sum_dperf += calc_metrics(label_gt[:, 1, 0], prediction[:, 1, 0], margin=opt.margin)
-            metrics_spars = calc_metrics(label_gt[:, 0], prediction[:, 0], margin=opt.margin)
-            metrics_dperf = calc_metrics(label_gt[:, 1], prediction[:, 1], margin=opt.margin)
+            metrics_spars = calc_metrics(denormalize(label_gt[:, 0], 0, 1), denormalize(prediction[:, 0], 0, 1), margin=opt.margin)
+            metrics_dperf = calc_metrics(denormalize(label_gt[:, 1], 0, 1),  denormalize(prediction[:, 1], 0, 1), margin=opt.margin)
             metrics_sum_spars +=  metrics_spars
             metrics_sum_dperf += metrics_dperf
             curr_max_error_spars = metrics_spars[3]
@@ -192,7 +192,7 @@ if __name__ == '__main__':
     parser.add_argument('--device', default='cuda', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--pretrained', type=str, default='')
     parser.add_argument('--smalldata', type=bool, default=False)
-    parser.add_argument('--test-case', type=str, default='manual_transformer_all53_08_augm')
+    parser.add_argument('--test-case', type=str, default='manual_transformer_all53_09_augm2')
     #parser.add_argument('--test-case', type=str, default='test_90_rep_2')
 
     parser.add_argument('--epochs', type=int, default=2000)
