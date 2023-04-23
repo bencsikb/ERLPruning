@@ -68,20 +68,22 @@ class PositionalEncoding(nn.Module):
 """
 
 class Transformer(nn.Module):
-    def __init__(self, nhead, dim_model, out_size):
+    def __init__(self, nhead, nlayers, dim_model, dim_ff,  out_size, dropout, norm=True):
         super(Transformer, self).__init__()
-        self.encoder = nn.TransformerEncoderLayer(dim_model, nhead, dim_feedforward=128, dropout=0)
-        #self.positional_encoder = PositionalEncoder(embedding_dim=dim_model)
+        self.initial_linear = nn.Linear(6, dim_model)
         self.positional_encoder = PositionalEncoder(embedding_dim=dim_model)
+        self.__encoder_layer = nn.TransformerEncoderLayer(dim_model, nhead, dim_feedforward=dim_ff, dropout=dropout)
+        self.encoder = nn.TransformerEncoder(self.__encoder_layer, num_layers=nlayers, norm=nn.LayerNorm(dim_model))
         self.final_linear = nn.Linear(dim_model, out_size)
 
     def forward(self, src, src_mask=None):
-        print(f"src in transformer forward before PosEnd: {src.shape}")
+        src = self.initial_linear(src)
+        # print(f"src in transformer forward before PosEnd: {src.shape}")
         x = self.positional_encoder(src)
-        print(f"x in transformer forward after PosEnd: {x.shape}")
+        # print(f"x in transformer forward after PosEnd: {x.shape}")
         x = self.encoder(x)
-        x = self.encoder(x)
-        print(f"x in transformer forward after Encoder: {x.shape}")
+        #x = self.encoder(x)
+        # print(f"x in transformer forward after Encoder: {x.shape}")
         out = self.final_linear(x[0, :, :])
         # out = self.final_linear(x)
 
