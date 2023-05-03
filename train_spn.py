@@ -57,24 +57,32 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
         print("len dataloader", len(dataloader))
 
         for batch_i, (data, label_gt) in enumerate(dataloader):
+
             print(f"batch {batch_i}")
             data = data.type(torch.float32).cuda()
             label_gt = label_gt.type(torch.float32).cuda()
+
+            if data.shape[0] != opt.batch_size:
+                continue
+
             optimizer.zero_grad()
-            data = torch.cat((data[:, :44], data[:, 264:]), dim=1) # use only alpha and spars as state features
+            print("data shape in main", data.shape)
+            #todo data = torch.cat((data[:, :44], data[:, 264:]), dim=1) # use only alpha and spars as state features
+            data = torch.cat((data[:, :, 0], data[:, :, -1]), dim=1) # use only alpha and spars as state features
+            print("data shape in main", data.shape)
             #print(f"datashape {data.shape}, labelshape {label_gt.shape}")
             prediction = model(data)
 
-            loss = criterion_dperf(denormalize(label_gt[:, 0], 0, 1),  denormalize(prediction[:, 0], 0, 1)) \
-                   + criterion_spars(denormalize(label_gt[:, 1], 0, 1), denormalize(prediction[:, 1], 0, 1))
+            loss = criterion_spars(denormalize(label_gt[:, 0], 0, 1),  denormalize(prediction[:, 0], 0, 1)) \
+                   + criterion_dperf(denormalize(label_gt[:, 1], 0, 1), denormalize(prediction[:, 1], 0, 1))
             # loss = criterion_err(label_gt[:,0], prediction[:,0]) + criterion_spars(label_gt[:,1], prediction[:,1])
 
             loss.backward()
             optimizer.step()
             running_loss += loss.cpu().item()
             # err, prec, neg_err, neg_corr, negsign_prec = calc_precision(error_gt, error_pred)
-            metrics_sum_dperf += calc_metrics(label_gt[:, 0], prediction[:, 0], margin=opt.margin)
-            metrics_sum_spars += calc_metrics(label_gt[:, 1], prediction[:, 1], margin=opt.margin)
+            metrics_sum_spars += calc_metrics(label_gt[:, 0], prediction[:, 0], margin=opt.margin)
+            metrics_sum_dperf += calc_metrics(label_gt[:, 1], prediction[:, 1], margin=opt.margin)
             #print(metrics_sum_dperf[0,0], tmp[2]) #error
             #print(metrics_sum_dperf , tmp[0]) #accuracy
             #print(metrics_sum_dperf[0,3], tmp[1], "\n") #negsign recall
@@ -174,9 +182,9 @@ if __name__ == '__main__':
     parser.add_argument('--results-save-path', type=str, default='results/pruning_error_pred')
     parser.add_argument('--cfg', type=str, default='cfg/spn.cfg')
     parser.add_argument('--device', default='cuda', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
-    parser.add_argument('--pretrained', type=str, default='/data/blanka/checkpoints/pruning_error_pred/test_97_3627.pth')
+    parser.add_argument('--pretrained', type=str, default='') #'/data/blanka/checkpoints/pruning_error_pred/test_97_3627.pth')
     parser.add_argument('--smalldata', type=bool, default=False)
-    parser.add_argument('--test-case', type=str, default='test_old_trial')
+    parser.add_argument('--test-case', type=str, default='test_old_w107')
     #parser.add_argument('--test-case', type=str, default='test_90_rep_2')
 
     parser.add_argument('--epochs', type=int, default=4000)
@@ -225,7 +233,7 @@ if __name__ == '__main__':
     else:
         print("new model")
         epoch = 0
-        model = errorNet2(88, 2).cuda()
+        model = errorNet2(214, 2).cuda()
         #model.apply(init_weights)
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
         #optimizer = Lamb(model.parameters(), lr=0.001, weight_decay=1e-5)
