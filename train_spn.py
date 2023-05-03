@@ -161,8 +161,8 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
         # Save params
 
         with open(results_file, 'a') as f:
-            f.write(F"{epoch} {running_loss} {val_running_loss} | {metrics_avg_dperf} | {metrics_avg_spars} "
-                    F"| {val_metrics_avg_dperf} | {val_metrics_avg_spars}\n".replace("[", "").replace("]","").replace(",","").replace("\t", ""))
+            f.write(F"{epoch} {running_loss} {val_running_loss} | {metrics_avg_dperf} | {val_metrics_avg_dperf} "
+                    F"| {metrics_avg_spars} | {val_metrics_avg_spars}\n".replace("[", "").replace("]", "").replace(",", "").replace("\t", ""))
 
         lr_sched.step()
         lr_print = 'Learning rate at this epoch is: %0.9f' % lr_sched.get_lr()[0]
