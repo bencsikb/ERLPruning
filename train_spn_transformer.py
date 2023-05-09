@@ -137,13 +137,18 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
                       'optimizer': optimizer,
                       'scheduler': lr_sched}
 
-        # torch.save(checkpoint, os.path.join(opt.ckpt_save_path, opt.test_case + '.pth'))
+        # Save model
+
         torch.save(checkpoint, last)
 
-        # Save model
-        if running_loss < bestLoss:
-            bestLoss = running_loss
+        if val_running_loss < bestLoss:
+            bestLoss = val_running_loss
             torch.save(checkpoint, best)
+
+        if epoch % 50 == 0:
+            torch.save(checkpoint, f"{wdir}_e{epoch}")
+
+
 
         # Tensorboard logging
         tb_writer.add_scalar("train_loss", running_loss, epoch)
@@ -192,17 +197,17 @@ if __name__ == '__main__':
     parser.add_argument('--device', default='cuda', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--pretrained', type=str, default='')
     parser.add_argument('--smalldata', type=bool, default=False)
-    parser.add_argument('--test-case', type=str, default='manual_transformer_all53_09_augm2')
+    parser.add_argument('--test-case', type=str, default='manual_transformer_all53_12_augm2_repr')
     #parser.add_argument('--test-case', type=str, default='test_90_rep_2')
 
     parser.add_argument('--epochs', type=int, default=2000)
     parser.add_argument('--val_interval', type=int, default=1)
     #parser.add_argument('--batch-size', type=int, default=32768)
-    parser.add_argument('--batch-size', type=int, default=64)
+    parser.add_argument('--batch-size', type=int, default=512)
     parser.add_argument('--margin', type=float, default=0.02)
 
     # Transfromer params
-    parser.add_argument('--nheads', type=int, default=2)
+    parser.add_argument('--nheads', type=int, default=8)
     parser.add_argument('--nlayers', type=int, default=2)
     parser.add_argument('--dim_ff', type=int, default=2048)
     parser.add_argument('--dropout', type=float, default=0.0)
@@ -259,8 +264,8 @@ if __name__ == '__main__':
         """
         model = Transformer(nhead=opt.nheads, nlayers=opt.nlayers, dim_model=opt.dim_model, dim_ff=opt.dim_ff,  out_size=2, dropout=opt.dropout).to(opt.device)
         #model = nn.Transformer(d_model=opt.dim_model, nhead=opt.nheads, num_encoder_layers=opt.nlayers, num_decoder_layers=opt.nlayers, dim_feedforward=opt.dim_ff, dropout=opt.dropout).to(opt.device)
-        # optimizer = torch.optim.Adam(model.parameters(), lr=0.0005, weight_decay=1e-5)
-        optimizer = Lamb(model.parameters(), lr=0.001, weight_decay=1e-5)
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.0005, weight_decay=1e-5)
+        # optimizer = Lamb(model.parameters(), lr=0.001, weight_decay=1e-5)
         lr_sched = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=opt.epochs, eta_min=0.000005,
                                                               last_epoch=-1)
         criterion_dperf = LogCoshLoss().cuda()
