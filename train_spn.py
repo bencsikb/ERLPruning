@@ -27,6 +27,27 @@ from test_spn import validate
 torch.manual_seed(42)
 torch.cuda.manual_seed(42)
 
+def optimizer_to(optim, device):
+    for param in optim.state.values():
+        # Not sure there are any global tensors in the state dict
+        if isinstance(param, torch.Tensor):
+            param.data = param.data.to(device)
+            if param._grad is not None:
+                param._grad.data = param._grad.data.to(device)
+        elif isinstance(param, dict):
+            for subparam in param.values():
+                if isinstance(subparam, torch.Tensor):
+                    subparam.data = subparam.data.to(device)
+                    if subparam._grad is not None:
+                        subparam._grad.data = subparam._grad.data.to(device)
+
+def scheduler_to(sched, device):
+    for param in sched.__dict__.values():
+        if isinstance(param, torch.Tensor):
+            param.data = param.data.to(device)
+            if param._grad is not None:
+                param._grad.data = param._grad.data.to(device)
+
 def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader_val, tb_writer=None):
 
     # Path for saving weights
@@ -83,6 +104,7 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
             # err, prec, neg_err, neg_corr, negsign_prec = calc_precision(error_gt, error_pred)
             metrics_sum_spars += calc_metrics(label_gt[:, 0], prediction[:, 0], margin=opt.margin)
             metrics_sum_dperf += calc_metrics(label_gt[:, 1], prediction[:, 1], margin=opt.margin)
+
             #print(metrics_sum_dperf[0,0], tmp[2]) #error
             #print(metrics_sum_dperf , tmp[0]) #accuracy
             #print(metrics_sum_dperf[0,3], tmp[1], "\n") #negsign recall
@@ -119,7 +141,7 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
 
         if epoch % opt.val_interval == 0:
             val_running_loss, val_metrics_avg_dperf, val_metrics_avg_spars = validate(dataloader_val, model,
-                                                                                    criterion_dperf, criterion_spars, opt.margin)
+                                                                                    criterion_dperf, criterion_spars, opt.margin, device)
 
         checkpoint = {'epoch': epoch,
                       'model': model,
@@ -164,6 +186,7 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
             f.write(F"{epoch} {running_loss} {val_running_loss} | {metrics_avg_dperf} | {val_metrics_avg_dperf} "
                     F"| {metrics_avg_spars} | {val_metrics_avg_spars}\n".replace("[", "").replace("]", "").replace(",", "").replace("\t", ""))
 
+
         lr_sched.step()
         lr_print = 'Learning rate at this epoch is: %0.9f' % lr_sched.get_lr()[0]
         print(lr_print)
@@ -173,12 +196,11 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
     plt.plot(losses)
 
 
-
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data', type=str, default='data/spndata.yaml', help='data.yaml path')
-    parser.add_argument('--logdir', type=str, default='/data/blanka/ERLPruning/runs/SPN', help='tensorboard log path')
+    parser.add_argument('--data', type=str, default='data/spndata_coco.yaml', help='data.yaml path')
+    parser.add_argument('--logdir', type=str, default='/root/workdir/ERLPruning/runs/SPN', help='tensorboard log path')
     parser.add_argument('--results-save-path', type=str, default='results/pruning_error_pred')
     parser.add_argument('--cfg', type=str, default='cfg/spn.cfg')
     parser.add_argument('--device', default='cuda', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
@@ -186,14 +208,11 @@ if __name__ == '__main__':
     parser.add_argument('--smalldata', type=bool, default=False)
     parser.add_argument('--test-case', type=str, default='test_old_w107')
     #parser.add_argument('--test-case', type=str, default='test_90_rep_2')
-
     parser.add_argument('--epochs', type=int, default=4000)
     parser.add_argument('--val_interval', type=int, default=1)
     #parser.add_argument('--batch-size', type=int, default=32768)
     parser.add_argument('--batch-size', type=int, default=4096)
     parser.add_argument('--margin', type=int, default=0.02)
-
-
     opt = parser.parse_args()
 
     tb_writer = SummaryWriter(log_dir=os.path.join(opt.logdir, opt.test_case ))
@@ -217,15 +236,17 @@ if __name__ == '__main__':
     if opt.pretrained:
         ckpt = torch.load(opt.pretrained)
         epoch = ckpt['epoch']
-        model = ckpt['model']
-        criterion_dperf = ckpt['criterion_err'] # !!! if loading an old model, this is called criterion_err !!!
-        criterion_spars = ckpt['criterion_spars']
+        model = ckpt['model'].to(opt.device)
+        criterion_dperf = ckpt['criterion_err'].to(opt.device) # !!! if loading an old model, this is called criterion_err !!!
+        criterion_spars = ckpt['criterion_spars'].to(opt.device)
         lr_sched = ckpt['scheduler']
         optimizer = ckpt['optimizer']
+        optimizer_to(optimizer, opt.device)
+        #optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
         for g in optimizer.param_groups:
            g['lr'] = 0.00008
-        lr_sched = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=opt.epochs, eta_min=0.00001,
-                                                              last_epoch=epoch)
+        lr_sched = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=opt.epochs, eta_min=0.00001, last_epoch=epoch)
+        scheduler_to(lr_sched, opt.device)
         lr_sched.step()
         lr_print = 'Learning rate at this epoch is: %0.9f' % lr_sched.get_lr()[0]
         print("pretrained", epoch)
@@ -239,8 +260,8 @@ if __name__ == '__main__':
         #optimizer = Lamb(model.parameters(), lr=0.001, weight_decay=1e-5)
         lr_sched = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=opt.epochs, eta_min=0.000005,
                                                               last_epoch=-1)
-        criterion_dperf = LogCoshLoss().cuda()
-        criterion_spars = LogCoshLoss().cuda() #nn.MSELoss().cuda()
+        criterion_dperf = LogCoshLoss().to(opt.device)
+        criterion_spars = LogCoshLoss().to(opt.device) #nn.MSELoss().cuda()
         #criterion_err = NegativeWeightedMSELoss(5).cuda()
         #criterion_spars = torch.nn.MSELoss().cuda()
 

@@ -13,7 +13,7 @@ import time
 from utils.spn_utils import denormalize, calc_metrics
 
 
-def validate(dataloader, model, criterion_dperf, criterion_spars, margin):
+def validate(dataloader, model, criterion_dperf, criterion_spars, margin, device):
 
     model.eval()
     metrics_sum_dperf = np.zeros(6)
