@@ -19,6 +19,7 @@ from models.error_pred_network import errorNet, errorNet2
 import torch.utils.data
 from utils.torch_utils import init_seeds as init_seeds_manual
 from models.models import *
+from utils.logger import BasicLogger
 #from utils.losses import LogCoshLoss, NegativeWeightedMSELoss
 from utils.losses import LogCoshLoss
 from utils.optimizers import RAdam, Lamb
@@ -59,6 +60,11 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
     results_file = str(log_dir / 'results.txt')
     epochs, batch_size =  opt.epochs, opt.batch_size,
     init_seeds_manual(42)
+
+    # Save settings and model
+    settings_dict = {"criterion_dperf": str(criterion_dperf), "criterion_spars": str(criterion_spars), "optimizer": str(optimizer)}
+    txt_logger.log_settings(opt, settings_dict)
+    txt_logger.log_model(model)
 
 
     losses, errors, precisions, sign_precisions = [], [], [], []
@@ -206,7 +212,7 @@ if __name__ == '__main__':
     parser.add_argument('--device', default='cuda', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--pretrained', type=str, default='') #'/data/blanka/checkpoints/pruning_error_pred/test_97_3627.pth')
     parser.add_argument('--smalldata', type=bool, default=False)
-    parser.add_argument('--test-case', type=str, default='test_old_w107')
+    parser.add_argument('--test-case', type=str, default='deleteme')
     #parser.add_argument('--test-case', type=str, default='test_90_rep_2')
     parser.add_argument('--epochs', type=int, default=4000)
     parser.add_argument('--val_interval', type=int, default=1)
@@ -216,6 +222,7 @@ if __name__ == '__main__':
     opt = parser.parse_args()
 
     tb_writer = SummaryWriter(log_dir=os.path.join(opt.logdir, opt.test_case ))
+    txt_logger = BasicLogger(log_dir=opt.logdir, test_case=opt.test_case)
     with open(opt.data) as f:
         data_dict = yaml.load(f, Loader=yaml.FullLoader)  # model dict
 
