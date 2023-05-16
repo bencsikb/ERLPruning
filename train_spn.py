@@ -65,6 +65,7 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
     settings_dict = {"criterion_dperf": str(criterion_dperf), "criterion_spars": str(criterion_spars), "optimizer": str(optimizer)}
     txt_logger.log_settings(opt, settings_dict)
     txt_logger.log_model(model)
+    txt_logger.log_data_yaml(os.path.abspath('data/'), "spndata.yaml")
 
 
     losses, errors, precisions, sign_precisions = [], [], [], []
@@ -86,8 +87,8 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
         for batch_i, (data, label_gt) in enumerate(dataloader):
 
             print(f"batch {batch_i}")
-            data = data.type(torch.float32).cuda()
-            label_gt = label_gt.type(torch.float32).cuda()
+            data = data.type(torch.float32).to(device)
+            label_gt = label_gt.type(torch.float32).to(device)
 
             if data.shape[0] != opt.batch_size:
                 continue
@@ -205,19 +206,19 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data', type=str, default='data/spndata_coco.yaml', help='data.yaml path')
-    parser.add_argument('--logdir', type=str, default='/root/workdir/ERLPruning/runs/SPN', help='tensorboard log path')
+    parser.add_argument('--data', type=str, default='data/spndata.yaml', help='data.yaml path')
+    parser.add_argument('--logdir', type=str, default='/data/blanka/ERLPruning/runs/SPN', help='tensorboard log path')
     parser.add_argument('--results-save-path', type=str, default='results/pruning_error_pred')
     parser.add_argument('--cfg', type=str, default='cfg/spn.cfg')
-    parser.add_argument('--device', default='cuda', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
+    parser.add_argument('--device', default='cuda:0', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--pretrained', type=str, default='') #'/data/blanka/checkpoints/pruning_error_pred/test_97_3627.pth')
     parser.add_argument('--smalldata', type=bool, default=False)
-    parser.add_argument('--test-case', type=str, default='deleteme')
+    parser.add_argument('--test-case', type=str, default='test_old_w107_05')
     #parser.add_argument('--test-case', type=str, default='test_90_rep_2')
     parser.add_argument('--epochs', type=int, default=4000)
     parser.add_argument('--val_interval', type=int, default=1)
     #parser.add_argument('--batch-size', type=int, default=32768)
-    parser.add_argument('--batch-size', type=int, default=4096)
+    parser.add_argument('--batch-size', type=int, default=2048)
     parser.add_argument('--margin', type=int, default=0.02)
     opt = parser.parse_args()
 
@@ -261,12 +262,11 @@ if __name__ == '__main__':
     else:
         print("new model")
         epoch = 0
-        model = errorNet2(214, 2).cuda()
+        model = errorNet2(214, 2).to(opt.device)
         #model.apply(init_weights)
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
         #optimizer = Lamb(model.parameters(), lr=0.001, weight_decay=1e-5)
-        lr_sched = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=opt.epochs, eta_min=0.000005,
-                                                              last_epoch=-1)
+        lr_sched = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=opt.epochs, eta_min=1e-5, last_epoch=-1)
         criterion_dperf = LogCoshLoss().to(opt.device)
         criterion_spars = LogCoshLoss().to(opt.device) #nn.MSELoss().cuda()
         #criterion_err = NegativeWeightedMSELoss(5).cuda()
