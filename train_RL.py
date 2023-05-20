@@ -26,6 +26,7 @@ from utils.LR_losses import CriticLoss, ActorLoss, ActorPPOLoss, get_discounted_
 # from utils.state_tester import get_fix_state
 from utils.RL_logger import RLLogger, TensorboardLogger
 from utils.torch_utils import init_seeds
+from utils.optimizers import RAdam, Lamb
 
 
 timefile = "/home/blanka/YOLOv4_Pruning/sandbox/time_measure_pruning3.txt"
@@ -40,22 +41,24 @@ if __name__ == '__main__':
     parser.add_argument('--yolo_layers', default=[138, 149, 160])
     parser.add_argument('--device', type=str, default='cuda')
     parser.add_argument('--episodeNum', type=int, default=5000)
-    parser.add_argument('--batch-size', type=int, default=1024)
-    parser.add_argument('--ent_coef', type=int, default=1e-4)
+    parser.add_argument('--batch-size', type=int, default=512)
+    parser.add_argument('--ent_coef', type=int, default=5e-2)
     parser.add_argument('--actor-base-lr', type=int, default=1e-3)
     parser.add_argument('--actor-last-lr', type=int, default=5e-8)
-    parser.add_argument('--critic-base-lr', type=int, default=0.01)
-    parser.add_argument('--test-case', type=str, default='trans_spn54_03')
+    parser.add_argument('--critic-base-lr', type=int, default=1e-3)
+    parser.add_argument('--test-case', type=str, default='trans_spn6_04a')
     parser.add_argument('--save-interval', type=int, default=50)
     # parser.add_argument('--ppo-eps-base', type=int, default=4)
     # parser.add_argument('--ppo-eps-last', type=int, default=4)
     parser.add_argument('--n-prunable-layers', type=int, default=107)
+    parser.add_argument('--optim', default='adam', help="[adam, lamb]")
+    parser.add_argument('--alphas', default=[0.0, 0.1, 0.5, 1.0, 2.2])
 
     # For reward function
     parser.add_argument('--reward-func', type=str, default="reward_function")
-    parser.add_argument('--err_coef', type=int, default=1.0)
-    parser.add_argument('--spars_coef', type=int, default=0.0)
-    parser.add_argument('--target_error', type=int, default=0.1)
+    parser.add_argument('--err_coef', type=int, default=1.5)
+    parser.add_argument('--spars_coef', type=int, default=1.0)
+    parser.add_argument('--target_error', type=int, default=0.2)
     parser.add_argument('--target_spars', type=int, default=0.6)
     parser.add_argument('--beta', type=int, default=5)
     # parser.add_argument('--A', type=int, default=2)
@@ -71,13 +74,12 @@ if __name__ == '__main__':
     parser.add_argument('--test', type=bool, default=False)
 
     # Pretrained nets
-    parser.add_argument('--network_forpruning',
-                        default="/data/blanka/ERLPruning/runs/YOLOv4_KITTI/exp_kitti_tvt/weights/best.pt")  # pretrained
+    parser.add_argument('--network_forpruning', default="/data/blanka/ERLPruning/runs/YOLOv4_KITTI/exp_kitti_tvt/weights/best.pt")  # pretrained
     parser.add_argument('--cfg', type=str, default='cfg/yolov4_kitti.cfg', help='model.yaml path')
     #todo parser.add_argument('--spn', type=str, default='/data/blanka/checkpoints/pruning_error_pred/test_97_2534.pth')
-    parser.add_argument('--spn', type=str, default='/data/blanka/ERLPruning/runs/SPN/manual_transformer_all54_03/weights/best.pt')
-    # parser.add_argument('--pretrained', type=str, default='/data/blanka/ERLPruning/runs/RL/trans_spn53_01/1100.pth')
-    parser.add_argument('--pretrained', type=str, default='')
+    parser.add_argument('--spn', type=str, default='/data/blanka/ERLPruning/runs/SPN/manual_transformer_all6_01/weights/last.pt')
+    parser.add_argument('--pretrained', type=str, default='/data/blanka/ERLPruning/runs/RL/trans_spn6_04/650.pth')
+    # parser.add_argument('--pretrained', type=str, default='')
 
     # Destinations
     parser.add_argument('--ckpt-save-path', type=str, default='/data/blanka/ERLPruning/runs/RL')
@@ -110,8 +112,13 @@ if __name__ == '__main__':
     spn = ckpt_spn['model']
     spn.eval()
 
-    # Initialize actor and critic networks
+    # Define alpha values
+    # alphas = np.arange(0.0, 2.3, 0.1).tolist()
+    # todo alphas = [float("{:.2f}".format(x)) for x in alphas]
 
+    alphas = opt.alphas
+
+    # Initialize actor and critic networks
     if opt.pretrained:
         ckpt = torch.load(opt.pretrained)
         actorNet = ckpt['actor_model']
@@ -139,13 +146,18 @@ if __name__ == '__main__':
     else:
         print("new model")
 
-        actorNet = actorNet2(opt.n_prunable_layers * 6, 23).to(opt.device)
+        actorNet = actorNet2(opt.n_prunable_layers * 6, len(alphas)).to(opt.device)
         # actorNet.apply(init_weights)
         criticNet = criticNet(opt.n_prunable_layers * 6, 1).to(opt.device)
-        actor_optimizer = torch.optim.Adam(actorNet.parameters(), lr=opt.actor_base_lr)
+        if opt.optim == 'adam':
+            actor_optimizer = torch.optim.Adam(actorNet.parameters(), lr=opt.actor_base_lr)
+            critic_optimizer = torch.optim.Adam(criticNet.parameters(), lr=opt.critic_base_lr)
+        elif opt.optim == 'lamb':
+            actor_optimizer = Lamb(actorNet.parameters(), lr=opt.actor_base_lr, weight_decay=1e-5)
+            critic_optimizer = Lamb(criticNet.parameters(), lr=opt.critic_base_lr, weight_decay=1e-5)
+
         lr_sched = torch.optim.lr_scheduler.CosineAnnealingLR(actor_optimizer, T_max=opt.episodeNum,
                                                               eta_min=opt.actor_last_lr, last_epoch=-1)
-        critic_optimizer = torch.optim.Adam(criticNet.parameters(), lr=opt.critic_base_lr)
         # Define loss functions
         critic_criterion = CriticLoss().to(opt.device)
         actor_criterion = ActorPPOLoss().to(opt.device) if opt.PPO_flag else ActorLoss().to(opt.device)
@@ -159,9 +171,6 @@ if __name__ == '__main__':
     # Get layer indicies that can be pruned
     layers_for_pruning = get_prunable_layers_yolov4(net_for_pruning, opt.yolo_layers)
 
-    # Define alpha values
-    alphas = np.arange(0.0, 2.3, 0.1).tolist()
-    alphas = [float("{:.2f}".format(x)) for x in alphas]
 
     # Log settings
     settings_dict = {"episode": episode,
@@ -220,10 +229,11 @@ if __name__ == '__main__':
                 probs, action_dist, log_softmax = actorNet(data)
                 q_value = criticNet(data)
                 # print("dist", action_dist)
-                # print("value", q_value)
 
                 # Choose alpha values based on probabilities
                 action = action_dist.sample()  # alpha index
+                print(f"probs {probs.shape}, a, action: {action.shape}")
+
                 # entropy = action_dist.entropy()
                 log_prob = action_dist.log_prob(action).unsqueeze(1)
                 policy = probs.gather(-1, action.unsqueeze(0))
@@ -437,6 +447,7 @@ if __name__ == '__main__':
         if episode % opt.save_interval == 0:
             ckp_save_path = os.path.join(opt.ckpt_save_path, opt.test_case)
             torch.save(checkpoint, os.path.join(ckp_save_path, f"{episode}.pth"))
+            rl_logger.save_action_csv(episode, actions, errors, states)
 
         episode += 1
         print("Episode time ", time.time() - start_time_episode)

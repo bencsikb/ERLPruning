@@ -4,8 +4,10 @@ import json
 import torch
 import numpy as np
 from varname import nameof
+import pandas as pd
 from torch.utils.tensorboard import SummaryWriter
 
+from utils.LR_utils import denormalize, list2FloatTensor
 
 class RLLogger():
 
@@ -70,6 +72,19 @@ class RLLogger():
                     f.write(str(variable[0].shape) + "\n")
 
             f.write(str(variable) + "\n")
+
+    def save_action_csv(self, episode, actions, errors, states):
+        """Save all the alpha sequences and their corresponding error and sparsity values in a .csv file.
+        """
+        path = os.path.join(self.log_dir, f"actions_{episode}.csv")
+
+        alphas_df = pd.DataFrame(np.around(denormalize(actions[-1][:, 0, :].detach(), 0, 2.2), 2))
+        spars_df = pd.DataFrame(np.around(denormalize(states[-1][:, -1, -1].detach(), 0, 1), 3), columns=["spars"])
+        error_df = pd.DataFrame(np.around(denormalize(list2FloatTensor(errors)[-1, :, 0], 0, 1).detach(), 3), columns=["error"])
+
+        merged_df = pd.concat([alphas_df, spars_df, error_df], axis=1)
+        merged_df.to_csv(path)
+
 
     def log_best_samples(self, samples, episode):
         """
