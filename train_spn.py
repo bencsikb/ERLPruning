@@ -18,6 +18,7 @@ from utils.spn_utils import denormalize, calc_metrics
 from models.error_pred_network import errorNet, errorNet2
 import torch.utils.data
 from utils.torch_utils import init_seeds as init_seeds_manual
+from utils.general import optimizer_to, scheduler_to
 from models.models import *
 from utils.logger import BasicLogger
 #from utils.losses import LogCoshLoss, NegativeWeightedMSELoss
@@ -27,27 +28,6 @@ from test_spn import validate
 
 torch.manual_seed(42)
 torch.cuda.manual_seed(42)
-
-def optimizer_to(optim, device):
-    for param in optim.state.values():
-        # Not sure there are any global tensors in the state dict
-        if isinstance(param, torch.Tensor):
-            param.data = param.data.to(device)
-            if param._grad is not None:
-                param._grad.data = param._grad.data.to(device)
-        elif isinstance(param, dict):
-            for subparam in param.values():
-                if isinstance(subparam, torch.Tensor):
-                    subparam.data = subparam.data.to(device)
-                    if subparam._grad is not None:
-                        subparam._grad.data = subparam._grad.data.to(device)
-
-def scheduler_to(sched, device):
-    for param in sched.__dict__.values():
-        if isinstance(param, torch.Tensor):
-            param.data = param.data.to(device)
-            if param._grad is not None:
-                param._grad.data = param._grad.data.to(device)
 
 def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader_val, tb_writer=None):
 
