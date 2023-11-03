@@ -15,6 +15,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from utils.datasets import create_pruning_dataloader
 from utils.spn_utils import denormalize, calc_metrics
+from utils.config_parser import ConfigParser
 from models.error_pred_network import errorNet, errorNet2
 import torch.utils.data
 from utils.torch_utils import init_seeds as init_seeds_manual
@@ -29,7 +30,7 @@ from test_spn import validate
 torch.manual_seed(42)
 torch.cuda.manual_seed(42)
 
-def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader_val, tb_writer=None):
+def train(model, optimizer, lr_sched, conf, epoch, device, dataloader, dataloader_val, tb_writer=None):
 
     # Path for saving weights
     log_dir = Path(tb_writer.log_dir)
@@ -38,12 +39,12 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
     last = wdir + 'last.pt'
     best = wdir + 'best.pt'
     results_file = str(log_dir / 'results.txt')
-    epochs, batch_size =  opt.epochs, opt.batch_size,
+    epochs, batch_size =  conf.train.epochs, conf.train.batch_size,
     init_seeds_manual(42)
 
     # Save settings and model
     settings_dict = {"criterion_dperf": str(criterion_dperf), "criterion_spars": str(criterion_spars),  "optimizer": str(optimizer)}
-    txt_logger.log_settings(opt, settings_dict)
+    txt_logger.log_settings(conf, settings_dict)
     txt_logger.log_model(model)
 
     losses, errors, precisions, sign_precisions = [], [], [], []
@@ -80,8 +81,8 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
             optimizer.step()
             running_loss += loss.cpu().item()
             # err, prec, neg_err, neg_corr, negsign_prec = calc_precision(error_gt, error_pred)
-            metrics_sum_dperf += calc_metrics(label_gt[:, 1], prediction[:, 0], margin=opt.margin)
-            metrics_sum_spars += calc_metrics(label_gt[:, 0], prediction[:, 1], margin=opt.margin)
+            metrics_sum_dperf += calc_metrics(label_gt[:, 1], prediction[:, 0], margin=conf.train.margin)
+            metrics_sum_spars += calc_metrics(label_gt[:, 0], prediction[:, 1], margin=conf.train.margin)
             #print(metrics_sum_dperf[0,0], tmp[2]) #error
             #print(metrics_sum_dperf , tmp[0]) #accuracy
             #print(metrics_sum_dperf[0,3], tmp[1], "\n") #negsign recall
@@ -117,9 +118,9 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
 
         # VALIDATION
 
-        if epoch % opt.val_interval == 0:
+        if epoch % conf.train.val_interval == 0:
             val_running_loss, val_metrics_avg_dperf, val_metrics_avg_spars = validate(dataloader_val, model,
-                                                                                    criterion_dperf, criterion_spars, opt.margin, device)
+                                                                                    criterion_dperf, criterion_spars, conf.train.margin, device)
 
         checkpoint = {'epoch': epoch,
                       'model': model,
@@ -143,7 +144,7 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
         tb_writer.add_scalar("train_loss", running_loss, epoch)
         tb_writer.add_scalar("val_loss", val_running_loss, epoch)
 
-        tags_dperf_train = [f"dperf/train/margin_{opt.margin}_accuracy", "dperf/train/negsign_recall",  "dperf/train/mean_abs_error", "dperf/train/max_error", "dperf/train/mean_squared_error", "dperf/train/r2_score"]
+        tags_dperf_train = [f"dperf/train/margin_{conf.train.margin}_accuracy", "dperf/train/negsign_recall",  "dperf/train/mean_abs_error", "dperf/train/max_error", "dperf/train/mean_squared_error", "dperf/train/r2_score"]
         tags_dperf_val  = [x.replace("train", "val") for x in tags_dperf_train]
         tags_spars_train  = [x.replace("dperf", "spars") for x in tags_dperf_train]
         tags_spars_val  = [x.replace("train", "val") for x in tags_spars_train]
@@ -180,55 +181,65 @@ def train(model, optimizer, lr_sched, opt, epoch, device, dataloader, dataloader
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data', type=str, default='data/spndata.yaml', help='data.yaml path')
-    parser.add_argument('--logdir', type=str, default='/nas/blanka_phd/runs/SPN', help='tensorboard log path')
-    parser.add_argument('--cfg', type=str, default='cfg/spn.cfg')
-    parser.add_argument('--device', default='cuda:1', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
-    parser.add_argument('--pretrained', type=str, default='/nas/blanka_phd/Models/SPN/finetune_coco_03/weights/last.pt')
+    #parser.add_argument('--data', type=str, default='data/spndata.yaml', help='data.yaml path')
+    #parser.add_argument('--logdir', type=str, default='/nas/blanka_phd/runs/SPN', help='tensorboard log path')
+    #parser.add_argument('--cfg', type=str, default='cfg/spn.cfg')
+    parser.add_argument('--device', default='')
+    parser.add_argument('--task', default='spn')
+    #parser.add_argument('--pretrained', type=str, default='/nas/blanka_phd/Models/SPN/finetune_coco_03/weights/last.pt')
     #parser.add_argument('--pretrained', type=str, default='/nas/blanka_phd/Models/SPN/test_97_2534.pth')
-    parser.add_argument('--smalldata', type=bool, default=False)
+    #parser.add_argument('--smalldata', type=bool, default=False)
     parser.add_argument('--test-case', type=str, default='trial0')
 
-    parser.add_argument('--epochs', type=int, default=6000)
-    parser.add_argument('--val_interval', type=int, default=1)
-    parser.add_argument('--batch-size', type=int, default=2048)
-    parser.add_argument('--margin', type=int, default=0.02)
+    #parser.add_argument('--epochs', type=int, default=6000)
+    #parser.add_argument('--val_interval', type=int, default=1)
+    #parser.add_argument('--batch-size', type=int, default=2048)
+    #parser.add_argument('--margin', type=int, default=0.02)
 
     opt = parser.parse_args()
 
-    tb_writer = SummaryWriter(log_dir=os.path.join(opt.logdir, opt.test_case ))
-    txt_logger = BasicLogger(log_dir=opt.logdir, test_case=opt.test_case)
-    with open(opt.data) as f:
+    conf = ConfigParser.prepare_conf(opt)
+    if len(opt.device):
+        device = opt.device
+    else:
+        device = conf.train.device
+
+    tb_writer = SummaryWriter(log_dir=os.path.join(conf.paths.log_dir, conf.logging.folder, opt.test_case ))
+    txt_logger = BasicLogger(log_dir=os.path.join(conf.paths.log_dir, conf.logging.folder), test_case=opt.test_case)
+    with open(conf.data.data_yaml) as f:
         data_dict = yaml.load(f, Loader=yaml.FullLoader)  # model dict
 
     # Trainloader
     data_path = data_dict['train_state']
     label_path = data_dict['train_label']
-    dataloader, dataset = create_pruning_dataloader(data_path, label_path, batch_size=opt.batch_size)
+    dataloader, dataset = create_pruning_dataloader(data_path, label_path, batch_size=conf.train.batch_size)
 
     # Validation data
     data_path_val = data_dict['val_state']
     label_path_val = data_dict['val_label']
-    dataloader_val, dataset_val = create_pruning_dataloader(data_path_val, label_path_val, batch_size=opt.batch_size)
+    dataloader_val, dataset_val = create_pruning_dataloader(data_path_val, label_path_val, batch_size=conf.train.batch_size)
 
 
     print("len dataloader", len(dataloader))
 
 
-    if opt.pretrained:
-        ckpt = torch.load(opt.pretrained)
+    if conf.model.pretrained:
+        ckpt = torch.load(os.path.join(conf.paths.model_dir, conf.model.pretrained))
         epoch = ckpt['epoch']
-        model = ckpt['model'].to(opt.device)
-        criterion_dperf = ckpt['criterion_dperf'].to(opt.device) # !!! if loading an old model, this is called criterion_err, otherwise criterion_dperf!!!
-        criterion_spars = ckpt['criterion_spars'].to(opt.device)
+        model = ckpt['model'].to(device)
+        if conf.model.old:
+            criterion_dperf = ckpt['criterion_err'].to(device) 
+        else:
+            criterion_dperf = ckpt['criterion_dperf'].to(device) 
+        criterion_spars = ckpt['criterion_spars'].to(device)
         lr_sched = ckpt['scheduler']
         optimizer = ckpt['optimizer']
-        optimizer_to(optimizer, opt.device)
+        optimizer_to(optimizer, device)
         #optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
         for g in optimizer.param_groups:
            g['lr'] = 0.00008
-        lr_sched = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=opt.epochs, eta_min=0.00001, last_epoch=epoch)
-        scheduler_to(lr_sched, opt.device)
+        lr_sched = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=conf.train.epochs, eta_min=0.00001, last_epoch=epoch)
+        scheduler_to(lr_sched, conf.train.epochs)
         lr_sched.step()
         lr_print = 'Learning rate at this epoch is: %0.9f' % lr_sched.get_lr()[0]
         print("pretrained", epoch)
@@ -236,19 +247,19 @@ if __name__ == '__main__':
     else:
         print("new model")
         epoch = 0
-        model = errorNet2(88, 2).to(opt.device)
+        model = errorNet2(88, 2).to(device)
         #model.apply(init_weights)
         optimizer = torch.optim.Adam(model.parameters(), lr=opt.res_lr, weight_decay=1e-5)
         #optimizer = Lamb(model.parameters(), lr=0.001, weight_decay=1e-5)
-        lr_sched = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=opt.epochs, eta_min=0.000005, last_epoch=-1)
-        criterion_dperf = LogCoshLoss().to(opt.device)
-        criterion_spars = LogCoshLoss().to(opt.device) #nn.MSELoss().cuda()
+        lr_sched = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=conf.train.epochs, eta_min=0.000005, last_epoch=-1)
+        criterion_dperf = LogCoshLoss().to(device)
+        criterion_spars = LogCoshLoss().to(device) #nn.MSELoss().cuda()
         #criterion_err = NegativeWeightedMSELoss(5).cuda()
         #criterion_spars = torch.nn.MSELoss().cuda()
 
     print(model)
 
-    train(model, optimizer, lr_sched, opt, epoch, opt.device, dataloader, dataloader_val, tb_writer)
+    train(model, optimizer, lr_sched, conf, epoch, device, dataloader, dataloader_val, tb_writer)
 
 
 
