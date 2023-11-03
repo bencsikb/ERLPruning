@@ -23,17 +23,17 @@ def validate(dataloader, model, criterion_dperf, criterion_spars, margin, device
     cnnt = 0
 
     for batch_i, (data, label_gt) in enumerate(dataloader):
-        data = data.type(torch.float32).cuda()
-        #todo data = torch.cat((data[:, :44], data[:, 264:]), dim=1)
-        data = torch.cat((data[:, :, 0], data[:, :, -1]), dim=1)  # use only alpha and spars as state features
-        label_gt = label_gt.type(torch.float32).cuda()
+        data = data.type(torch.float32).to(device)
+        data = torch.cat((data[:, :, 0], data[:, :, -1]), dim=1).to(device)  # use only alpha and spars as state features
+        label_gt = label_gt.type(torch.float32).to(device)
         #print(f"datashape {data.shape}, labelshape {label_gt.shape}")
 
         prediction = model(data)
-        loss = criterion_spars(denormalize(label_gt[:, 0], 0, 1), denormalize(prediction[:, 0], 0, 1)) + criterion_dperf(denormalize(label_gt[:, 1], 0, 1), denormalize(prediction[:, 1], 0, 1))
+        loss = criterion_dperf(denormalize(label_gt[:, 1], 0, 1), denormalize(prediction[:, 0], 0, 1)) \
+               + criterion_spars(denormalize(label_gt[:, 0], 0, 1), denormalize(prediction[:, 1], 0, 1))
         running_loss += loss.cpu().item()
-        metrics_sum_spars += calc_metrics(label_gt[:, 0], prediction[:, 0], margin=margin)
-        metrics_sum_dperf += calc_metrics(label_gt[:, 1], prediction[:, 1], margin=margin)
+        metrics_sum_dperf += calc_metrics(label_gt[:, 1], prediction[:, 0], margin=margin)
+        metrics_sum_spars += calc_metrics(label_gt[:, 0], prediction[:, 1], margin=margin)
 
     # Calculate validation metrics
 
