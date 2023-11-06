@@ -51,7 +51,7 @@ def get_pruning_results(alpha_seq, map_before=None, layer_index=43):
     create_dataloader(val_img_path, val_label_path, imgsz, opt.batch_size, 32, opt, hyp=None, augment=False,
                       cache=False, rect=False)[0]
     # Load model
-    model = Darknet(opt.cfg).to('cuda')
+    model = Darknet(opt.cfg).to(opt.device)
 
     ckpt = torch.load(opt.weights)
     ckpt['model'] = {k: v for k, v in ckpt['model'].items() if model.state_dict()[k].numel() == v.numel()}
@@ -73,7 +73,7 @@ def get_pruning_results(alpha_seq, map_before=None, layer_index=43):
     network_param_nmb = sum([param.nelement() for param in model.parameters()])
 
     model, parser = prune_network(model, yolo_layers, layer_index, alpha_seq, dataset_make=True)
-    model.to("cuda")
+    model.to(opt.device)
 
     #document_model_details(model, "./sandbox/auto_pruned_HC2.txt")
 
@@ -111,7 +111,7 @@ def get_spn_results(alpha_seq, map_before=None):
     spn.eval()
 
     # Load model to be pruned
-    model = Darknet(opt.cfg).to('cuda')
+    model = Darknet(opt.cfg).to(opt.device)
     ckpt = torch.load(opt.weights)
     ckpt['model'] = {k: v for k, v in ckpt['model'].items() if model.state_dict()[k].numel() == v.numel()}
     model.load_state_dict(ckpt['model'], strict=False)
@@ -138,10 +138,18 @@ def get_spn_results(alpha_seq, map_before=None):
             action_seq[0, 0, :layer_cnt+1] = alpha_seq[0, 0, :layer_cnt+1]
 
             #print(f"{state_seq}")
+            print(action_seq.shape)
+            print(state_seq.shape)
 
             # Get the error for every sample in the batch
-            spn_input_data = torch.cat((torch.cat((action_seq, state_seq[:, :4, :]), dim=1), state_seq[:, -1, :].unsqueeze(1)),
-                dim=1).permute(0, 2, 1).type(torch.float32).to(opt.device)            #spn_tgt = torch.tensor([[1.0], [-1.0]]).expand(-1, opt.batch_size).permute(1, 0).type(torch.float32).to(opt.device)
+            #todo spn_input_data = torch.cat((torch.cat((action_seq, state_seq[:, :4, :]), dim=1), state_seq[:, -1, :].unsqueeze(1)),
+            #    dim=1).permute(0, 2, 1).type(torch.float32).to(opt.device)    
+            
+            spn_input_data = torch.cat((action_seq[:, 0, :], state_seq[:, -1, :]), dim=1).to(opt.device)   # use only alpha and spars as state features
+            print(spn_input_data.shape)  
+
+
+            #spn_tgt = torch.tensor([[1.0], [-1.0]]).expand(-1, opt.batch_size).permute(1, 0).type(torch.float32).to(opt.device)
             prediction = spn(spn_input_data)
             prediction = prediction.permute(0, 1)
             sparsity, dperf = prediction[:, 0].squeeze(), prediction[:, 1].squeeze()
@@ -158,9 +166,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     # parser.add_argument('--weights', nargs='+', type=str, default="weights/yolov4_kitti.weights", help='model.pt path(s)')
-    parser.add_argument('--weights', nargs='+', type=str, default="/data/blanka/ERLPruning/runs/YOLOv4_KITTI/exp_kitti_tvt/weights/best.pt", help='model.pt path(s)')
+    parser.add_argument('--weights', nargs='+', type=str, default="/nas/blanka_phd/Models/yolov4_kitti_tvt_best.pt", help='model.pt path(s)')
     #parser.add_argument('--weights', nargs='+', type=str, default="/data/blanka/ERLPruning/runs/YOLOv4_PascalVoc/exp_fromscratch_9_resumev2/weights/last.pt", help='model.pt path(s)')
-    parser.add_argument('--spn', type=str, default='/data/blanka/ERLPruning/runs/SPN/manual_transformer_all52_14/weights/best.pt')
+    parser.add_argument('--spn', type=str, default='/nas/blanka_phd/Models/SPN/test_97_2534.pth')
     parser.add_argument('--data', type=str, default='data/kitti.yaml', help='*.data path')
     parser.add_argument('--batch-size', type=int, default=1, help='size of each image batch')
     parser.add_argument('--img-size', type=int, default=540, help='inference size (pixels)')
@@ -168,7 +176,7 @@ if __name__ == "__main__":
     parser.add_argument('--iou-thres', type=float, default=0.5, help='IOU threshold for NMS')
     parser.add_argument('--save-json', action='store_true', help='save a cocoapi-compatible JSON results file')
     parser.add_argument('--task', default='val', help="'val', 'test', 'study'")
-    parser.add_argument('--device', default='cuda', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
+    parser.add_argument('--device', default='cuda:0', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--single-cls', action='store_true', help='treat as single-class dataset')
     parser.add_argument('--augment', default='False', help='augmented inference')
     parser.add_argument('--merge', action='store_true', help='use Merge NMS')
@@ -183,7 +191,7 @@ if __name__ == "__main__":
     parser.add_argument('--df_cols', default=[''])
     parser.add_argument('--test-cases', type=int, default=5000)
     parser.add_argument('--yolo_layers', default=[138, 149, 160])
-    parser.add_argument('--n-prunable-layers', type=int, default=107)
+    parser.add_argument('--n-prunable-layers', type=int, default=44)
 
     parser.add_argument('--compare-spn2real', type=bool, default=True)
 
@@ -195,7 +203,7 @@ if __name__ == "__main__":
         #alpha_seq = torch.tensor([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2.2,0,0,0,0,0,0,2.2,0,0.1,0,0,0,0,0,0.2,0,2.2,2.2,2.2]) # handcrafted1
         #alpha_seq = torch.tensor([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.1,0,0,0,0,0,0,0,0,2.2,0,0,0,0,0,0,2.2,0,0.2,0.2,0,0,0.1,0,0,0.1,2.2,2.2,0]) # handcrafted10
         #alpha_seq = torch.tensor([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-        alpha_seq = torch.tensor([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 2, 0.0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2]).to("cuda")  # RL
+        alpha_seq = torch.tensor([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 2, 0.0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2]).to(opt.device)  # RL
 
         get_pruning_results(alpha_seq) #, map_before=0.726)
 
@@ -210,8 +218,8 @@ if __name__ == "__main__":
         #print(f"{alphas.shape} {probs.shape}")
         #alpha_seq = random.choices(alphas, weights=probs, k=107)
         #alpha_seq = torch.tensor(alpha_seq)
-        alpha_seq = torch.full([107], 0.0, dtype=float)
-        alpha_seq[106] = 0.1
+        alpha_seq = torch.full([44], 0.0, dtype=float)
+        #alpha_seq[106] = 0.1
 
         get_spn_results(alpha_seq, map_before=0.726)
         print(f"alpha_seq: {alpha_seq.shape} {alpha_seq}")
