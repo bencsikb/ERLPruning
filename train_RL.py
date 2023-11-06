@@ -44,7 +44,6 @@ if __name__ == '__main__':
     parser.add_argument('--variable_logflag', type=bool, default=True)
     parser.add_argument('--lr_sched_step_flag', type=bool, default=False)
     parser.add_argument('--set_new_lr', type=bool, default=True)
-    parser.add_argument('--PPO-flag', type=bool, default=False)
     parser.add_argument('--set-new-lossfunc', type=bool, default=False)
     parser.add_argument('--test', type=bool, default=False)
 
@@ -102,7 +101,7 @@ if __name__ == '__main__':
             lr_sched.step()
 
         critic_criterion = ckpt['critic_criterion']
-        actor_criterion = ActorPPOLoss().to(device) if opt.set_new_lossfunc else ckpt['actor_criterion']
+        actor_criterion =  ckpt['actor_criterion']
         print("pretrained", episode)
         eps = 3.964
     else:
@@ -123,7 +122,7 @@ if __name__ == '__main__':
 
         # Define loss functions
         critic_criterion = CriticLoss().to(device)
-        actor_criterion = ActorPPOLoss().to(device) if opt.PPO_flag else ActorLoss().to(device)
+        actor_criterion = ActorLoss().to(device)
         episode = 0
 
     # Print the number of params od actor and critic nets
@@ -304,17 +303,10 @@ if __name__ == '__main__':
 
         # Loss backwards here
         critic_loss = critic_criterion(list2FloatTensor(rewards), list2FloatTensor(values), 0.99)
-        # critic_loss.backward(retain_graph=True)
-
-        if opt.PPO_flag:
-            eps = opt.ppo_eps_base - episode * (opt.ppo_eps_base - opt.ppo_eps_last) / conf.train.episodes,
-            actor_loss = actor_criterion(list2FloatTensor(rewards), list2FloatTensor(values),
-                                         list2FloatTensor(policies), list2FloatTensor(log_probs), log_probs_prev,
-                                         list2FloatTensor(entropies), ent_coef=conf.a2c.ent_coef, gamma=0.99, eps=eps)
-        else:
-            actor_loss = actor_criterion(list2FloatTensor(rewards), list2FloatTensor(values),
-                                         list2FloatTensor(policies), list2FloatTensor(log_probs),
-                                         list2FloatTensor(entropies), ent_coef=conf.a2c.ent_coef, gamma=0.99)
+        # critic_loss.backward(retain_graph=True)      
+        actor_loss = actor_criterion(list2FloatTensor(rewards), list2FloatTensor(values),
+                                        list2FloatTensor(policies), list2FloatTensor(log_probs),
+                                        list2FloatTensor(entropies), ent_coef=conf.a2c.ent_coef, gamma=0.99)
 
 
         ## log_probs_prev = [log_prob.detach() for log_prob in log_probs]
@@ -357,7 +349,6 @@ if __name__ == '__main__':
             tb_logger.log_variables(episode, denormalize(actions[-1][:, 0, :], 0, 2.2), nameof(actions), dim=0)
             ## tb_logger.log_variables(episode, denormalize(list2FloatTensor(errors)[:, :, 0], 0, 1), nameof(error), dim=1)
             ## tb_logger.log_variables(episode, list2FloatTensor(rewards_list)[:, :, 0], nameof(rewards_list), dim=1)
-            if opt.PPO_flag: tb_logger.log_scalar(episode, eps, nameof(eps))
 
             # tb_logger.log_variables(episode, list2FloatTensor(dEs)[:,:,0], nameof(dE), dim=1)
             # tb_logger.log_variables(episode, list2FloatTensor(dSs)[:,:,0], nameof(dS), dim=1)
@@ -382,7 +373,6 @@ if __name__ == '__main__':
                       'lr_sched': lr_sched,
                       'log_probs': log_probs_prev
                       }
-        if opt.PPO_flag: checkpoint['eps'] = eps
 
         # Save the checkpoint with episode
         if episode % conf.train.save_interval == 0:
