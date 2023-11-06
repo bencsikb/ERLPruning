@@ -181,21 +181,9 @@ def train(model, optimizer, lr_sched, conf, epoch, device, dataloader, dataloade
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    #parser.add_argument('--data', type=str, default='data/spndata.yaml', help='data.yaml path')
-    #parser.add_argument('--logdir', type=str, default='/nas/blanka_phd/runs/SPN', help='tensorboard log path')
-    #parser.add_argument('--cfg', type=str, default='cfg/spn.cfg')
+    parser.add_argument('task', default='spn')
     parser.add_argument('--device', default='')
-    parser.add_argument('--task', default='spn')
-    #parser.add_argument('--pretrained', type=str, default='/nas/blanka_phd/Models/SPN/finetune_coco_03/weights/last.pt')
-    #parser.add_argument('--pretrained', type=str, default='/nas/blanka_phd/Models/SPN/test_97_2534.pth')
-    #parser.add_argument('--smalldata', type=bool, default=False)
     parser.add_argument('--test-case', type=str, default='trial0')
-
-    #parser.add_argument('--epochs', type=int, default=6000)
-    #parser.add_argument('--val_interval', type=int, default=1)
-    #parser.add_argument('--batch-size', type=int, default=2048)
-    #parser.add_argument('--margin', type=int, default=0.02)
-
     opt = parser.parse_args()
 
     conf = ConfigParser.prepare_conf(opt)
