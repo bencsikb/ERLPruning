@@ -181,7 +181,7 @@ def train(model, optimizer, lr_sched, conf, epoch, device, dataloader, dataloade
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('task', default='spn')
+    parser.add_argument('--task', default='spn')
     parser.add_argument('--device', default='')
     parser.add_argument('--test-case', type=str, default='trial0')
     opt = parser.parse_args()
