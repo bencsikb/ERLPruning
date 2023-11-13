@@ -51,7 +51,7 @@ def train(model, optimizer, lr_sched, conf, epoch, device, dataloader, dataloade
     losses_val, errors_val, precisions_val, sign_precisions_val = [], [], [], []
     bestLoss = 10000
 
-    while epoch < epochs:  
+    while epoch < epochs:         
                   
         model.train()
         print(f"epoch {epoch}")
@@ -91,7 +91,7 @@ def train(model, optimizer, lr_sched, conf, epoch, device, dataloader, dataloade
         running_loss /= len(dataloader)
         metrics_avg_dperf = metrics_sum_dperf / len(dataloader)
         metrics_avg_spars = metrics_sum_spars / len(dataloader)
-
+        
 
         # VALIDATION
 
@@ -160,7 +160,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', default='spn')
     parser.add_argument('--device', default='')
-    parser.add_argument('--test-case', type=str, default='trial0')
+    parser.add_argument('--test-case', type=str, default='trial1')
     opt = parser.parse_args()
 
     conf = ConfigParser.prepare_conf(opt)
@@ -173,8 +173,8 @@ if __name__ == '__main__':
     txt_logger = BasicLogger(log_dir=os.path.join(conf.paths.log_dir, conf.logging.folder), test_case=opt.test_case)
 
     # Dataloaders
-    dataloader, dataset = create_pruning_dataloader(conf.data.data_path, conf.data.train_ids, conf.data.cache_path, conf.data.cache_ext+"_train", batch_size=conf.train.batch_size)
-    dataloader_val, dataset_val = create_pruning_dataloader(conf.data.data_path, conf.data.val_ids,  conf.data.cache_path, conf.data.cache_ext+"_val", batch_size=conf.train.batch_size)
+    dataloader, dataset = create_pruning_dataloader(conf.data.data_path, conf.data.train_ids, conf.data.cache_path, conf.data.cache_ext+"_train", batch_size=conf.train.batch_size, shuffle=True)
+    dataloader_val, dataset_val = create_pruning_dataloader(conf.data.data_path, conf.data.val_ids,  conf.data.cache_path, conf.data.cache_ext+"_val", batch_size=conf.train.batch_size, shuffle=False)
 
     if conf.model.pretrained:
         ckpt = torch.load(os.path.join(conf.paths.model_dir, conf.model.pretrained))
@@ -202,7 +202,7 @@ if __name__ == '__main__':
         epoch = 0
         model = errorNet2(88, 2).to(device)
         #model.apply(init_weights)
-        optimizer = torch.optim.Adam(model.parameters(), lr=opt.res_lr, weight_decay=1e-5)
+        optimizer = torch.optim.Adam(model.parameters(), lr=conf.train.start_lr, weight_decay=1e-5)
         #optimizer = Lamb(model.parameters(), lr=0.001, weight_decay=1e-5)
         lr_sched = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=conf.train.epochs, eta_min=0.000005, last_epoch=-1)
         criterion_dperf = LogCoshLoss().to(device)
