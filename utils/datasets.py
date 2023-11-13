@@ -371,6 +371,8 @@ class LoadPruningData():
             self.state_data, self.label_data = self.cache_data()
             torch.save(self.state_data, self.state_cache_path)
             torch.save(self.label_data, self.label_cache_path)
+        
+        print(f"{self.state_data.shape = }")
                     
     
     def cache_data(self):
@@ -394,7 +396,7 @@ class LoadPruningData():
 
     
     def __len__(self):
-        return len(self.state_files)
+        return self.state_data.shape[0]
 
 
     def __getitem__(self, index):
