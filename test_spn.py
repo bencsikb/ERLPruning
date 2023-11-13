@@ -14,6 +14,7 @@ import yaml
 from utils.spn_utils import denormalize, calc_metrics
 from utils.datasets import create_pruning_dataloader
 from utils.general import optimizer_to, scheduler_to
+from utils.config_parser import ConfigParser
 
 
 def validate(dataloader, model, criterion_dperf, criterion_spars, margin, device):
@@ -51,46 +52,36 @@ def validate(dataloader, model, criterion_dperf, criterion_spars, margin, device
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data', type=str, default='data/spndata.yaml', help='data.yaml path')
-    parser.add_argument('--logdir', type=str, default='/nas/blanka_phd/runs/SPN', help='tensorboard log path')
-    parser.add_argument('--cfg', type=str, default='cfg/spn.cfg')
-    parser.add_argument('--device', default='cuda:1', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
-    parser.add_argument('--pretrained', type=str, default='/nas/blanka_phd/Models/SPN/fromscratch_coco_2/weights/last.pt')
-    #parser.add_argument('--pretrained', type=str, default='/nas/blanka_phd/Models/SPN/test_97_2534.pth')
-    parser.add_argument('--smalldata', type=bool, default=False)
-    parser.add_argument('--test-case', type=str, default='trial0')
-
-    parser.add_argument('--epochs', type=int, default=6000)
-    parser.add_argument('--val_interval', type=int, default=1)
-    parser.add_argument('--batch-size', type=int, default=2048)
-    parser.add_argument('--margin', type=int, default=0.02)
-
+    parser.add_argument('--task', default='spn')
+    parser.add_argument('--device', default='')
     opt = parser.parse_args()
 
+    conf = ConfigParser.prepare_conf(opt)
+    if len(opt.device):
+        device = opt.device
+    else:
+        device = conf.train.device
+    
+    dataloader_val, dataset_val = create_pruning_dataloader(conf.data.data_path, conf.data.val_ids,  conf.data.cache_path, conf.data.cache_ext+"_val", batch_size=conf.train.batch_size)
 
 
-    with open(opt.data) as f:
-        data_dict = yaml.load(f, Loader=yaml.FullLoader)  # model dict
-
-    # Validation data
-    data_path_val = data_dict['all_state']
-    label_path_val = data_dict['all_label']
-    dataloader_val, dataset_val = create_pruning_dataloader(data_path_val, label_path_val, batch_size=opt.batch_size)
-
-    if opt.pretrained:
-        ckpt = torch.load(opt.pretrained)
+    if conf.model.pretrained:
+        ckpt = torch.load(os.path.join(conf.paths.model_dir, conf.model.pretrained))
         epoch = ckpt['epoch']
-        model = ckpt['model'].to(opt.device)
-        criterion_dperf = ckpt['criterion_dperf'].to(opt.device) # !!! if loading an old model, this is called criterion_err, otherwise criterion_dperf!!!
-        criterion_spars = ckpt['criterion_spars'].to(opt.device)
+        model = ckpt['model'].to(device)
+        if conf.model.old:
+            criterion_dperf = ckpt['criterion_err'].to(device) 
+        else:
+            criterion_dperf = ckpt['criterion_dperf'].to(device)      
+        criterion_spars = ckpt['criterion_spars'].to(device)
         lr_sched = ckpt['scheduler']
         optimizer = ckpt['optimizer']
-        optimizer_to(optimizer, opt.device)
+        optimizer_to(optimizer, device)
         #optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
         for g in optimizer.param_groups:
            g['lr'] = 0.00008
-        lr_sched = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=opt.epochs, eta_min=0.00001, last_epoch=epoch)
-        scheduler_to(lr_sched, opt.device)
+        lr_sched = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=conf.train.epochs, eta_min=0.00001, last_epoch=epoch)
+        scheduler_to(lr_sched, device)
         lr_sched.step()
         lr_print = 'Learning rate at this epoch is: %0.9f' % lr_sched.get_lr()[0]
         print("pretrained", epoch)
@@ -99,7 +90,7 @@ if __name__ == '__main__':
         print("Error! Pretrained model is missing..")
     
     val_running_loss, val_metrics_avg_dperf, val_metrics_avg_spars = validate(dataloader_val, model,
-                                                                                    criterion_dperf, criterion_spars, opt.margin, opt.device)
+                                                                                    criterion_dperf, criterion_spars, conf.train.margin, device)
 
-    print(f"Validation results for {opt.pretrained}:")
+    print(f"Validation results for {conf.model.pretrained}:")
     print(val_running_loss, val_metrics_avg_dperf, val_metrics_avg_spars)
