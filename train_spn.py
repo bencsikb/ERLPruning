@@ -51,7 +51,8 @@ def train(model, optimizer, lr_sched, conf, epoch, device, dataloader, dataloade
     losses_val, errors_val, precisions_val, sign_precisions_val = [], [], [], []
     bestLoss = 10000
 
-    while epoch < epochs:                
+    while epoch < epochs:  
+        """          
         model.train()
         print(f"epoch {epoch}")
 
@@ -114,7 +115,7 @@ def train(model, optimizer, lr_sched, conf, epoch, device, dataloader, dataloade
         # gt_negatives = metrics_sum[0, 7]
         # print(gt_negatives)
         # metrics_avg[0, 4:7] = metrics_sum[0, 4:7]/gt_negatives   # neg_error, negsign_hits, negsign_precision
-        
+        """
 
         # VALIDATION
 
@@ -194,22 +195,10 @@ if __name__ == '__main__':
 
     tb_writer = SummaryWriter(log_dir=os.path.join(conf.paths.log_dir, conf.logging.folder, opt.test_case ))
     txt_logger = BasicLogger(log_dir=os.path.join(conf.paths.log_dir, conf.logging.folder), test_case=opt.test_case)
-    with open(conf.data.data_yaml) as f:
-        data_dict = yaml.load(f, Loader=yaml.FullLoader)  # model dict
 
-    # Trainloader
-    data_path = data_dict['train_state']
-    label_path = data_dict['train_label']
-    dataloader, dataset = create_pruning_dataloader(data_path, label_path, batch_size=conf.train.batch_size)
-
-    # Validation data
-    data_path_val = data_dict['val_state']
-    label_path_val = data_dict['val_label']
-    dataloader_val, dataset_val = create_pruning_dataloader(data_path_val, label_path_val, batch_size=conf.train.batch_size)
-
-
-    print("len dataloader", len(dataloader))
-
+    # Dataloaders
+    dataloader, dataset = create_pruning_dataloader(conf.data.data_path, conf.data.train_ids, conf.data.cache_path, conf.data.cache_ext+"_train", batch_size=conf.train.batch_size)
+    dataloader_val, dataset_val = create_pruning_dataloader(conf.data.data_path, conf.data.val_ids,  conf.data.cache_path, conf.data.cache_ext+"_val", batch_size=conf.train.batch_size)
 
     if conf.model.pretrained:
         ckpt = torch.load(os.path.join(conf.paths.model_dir, conf.model.pretrained))

@@ -4,6 +4,7 @@ import os
 import random
 import shutil
 import time
+import csv
 from pathlib import Path
 from threading import Thread
 
@@ -73,8 +74,8 @@ def create_dataloader(path, label_path, imgsz, batch_size, stride, single_cls, h
 
 
 """ Suppliment for error prediction network. """
-def create_pruning_dataloader(path, label_path, batch_size, world_size=1):
-    dataset = LoadPruningData(path, label_path, batch_size)
+def create_pruning_dataloader(data_path, sample_path, cache_path, cache_ext, batch_size, world_size=1):
+    dataset = LoadPruningData(data_path, sample_path, cache_path, cache_ext)
     batch_size = min(batch_size, len(dataset))
     nw = min([os.cpu_count() // world_size, batch_size if batch_size > 1 else 0, 8])  # number of workers
     dataloader = torch.utils.data.DataLoader(dataset,
@@ -83,6 +84,29 @@ def create_pruning_dataloader(path, label_path, batch_size, world_size=1):
                                              collate_fn=LoadPruningData.collate_fn)
     return dataloader, dataset
 
+
+def create_DB_dataloader(conf, stride, single_cls, hyp=None, augment=False, cache=False, pad=0.0, rect=False,
+                      local_rank=-1, world_size=1):
+    # Make sure only the first process in DDP process the dataset first, and the following others can use the cache.
+    with torch_distributed_zero_first(local_rank):
+        dataset = LoadImagesAndLabelsFromDB(path, label_path, imgsz, batch_size,
+                                      augment=augment,  # augment images
+                                      hyp=hyp,  # augmentation hyperparameters
+                                      rect=rect,  # rectangular training
+                                      cache_images=cache,
+                                      stride=int(stride),
+                                      pad=pad)
+
+    batch_size = min(batch_size, len(dataset))
+    nw = min([os.cpu_count() // world_size, batch_size if batch_size > 1 else 0, 8])  # number of workers
+    train_sampler = torch.utils.data.distributed.DistributedSampler(dataset) if local_rank != -1 else None
+    dataloader = torch.utils.data.DataLoader(dataset,
+                                             batch_size=batch_size,
+                                             num_workers=nw,
+                                             sampler=train_sampler,
+                                             pin_memory=True,
+                                             collate_fn=LoadImagesAndLabelsFromDB.collate_fn)
+    return dataloader, dataset
 
 
 class LoadImages:  # for inference
@@ -305,82 +329,79 @@ class LoadStreams:  # multiple IP or RTSP cameras
 
 
 class LoadPruningData():
-    def __init__(self, path, label_path, batch_size=64):
+    def __init__(self, data_path, sample_file, cache_path, cache_ext):  
+        
+        self.cache_path = cache_path    
+        self.cache_ext =  cache_ext   
+        
+        self.state_cache_path = os.path.join(self.cache_path, self.cache_ext+"_states.pt")
+        self.label_cache_path = os.path.join(self.cache_path, self.cache_ext+"_labels.pt")   
+                       
+        
+        if os.path.exists(self.state_cache_path) and os.path.exists(self.label_cache_path):
+            print("Loading cache files...")
+            self.state_data = torch.load(self.state_cache_path) 
+            self.label_data = torch.load(self.label_cache_path) 
+        else:              
+                        
+            print("Loading data from files...")   
+            
+            # Read state file paths
+            try:
+                try:
+                    with open(sample_file, 'r') as file:
+                        csv_reader = csv.reader(file)
+                        row_samples = [row for row in csv_reader]
+                    samples = [element for row in row_samples for element in row]
 
-        try:
-            f = []  # pruning data files
-            for p in path if isinstance(path, list) else [path]:
-                p = str(Path(p))  # os-agnostic
-                parent = str(Path(p).parent) + os.sep
-                if os.path.isfile(p):  # file
-                    with open(p, 'r') as t:
-                        t = t.read().splitlines()
-                        f += [x.replace('./', parent) if x.startswith('./') else x for x in t]  # local to global path
-                elif os.path.isdir(p):  # folder
-                    f += glob.iglob(p + os.sep + '*.*')
-                else:
-                    raise Exception('%s does not exist' % p)
-            self.pruningdata_files = sorted([x.replace('/', os.sep) for x in f])
+                except FileNotFoundError:
+                    print(f"The file '{sample_file}' was not found.")
+                
+    
+                self.state_files = [os.path.join(data_path, 'states', str(sample) + '.txt')  for sample in samples]
+                self.label_files = [os.path.join(data_path, 'labels', sample + '.txt') for sample in samples]
+            
+                # Check if there are same number of state and label files
+                if (len(self.state_files) != len(self.label_files)):
+                    raise ValueError(f"Different number of states and labels: {len(self.state_files) = }, {len(self.label_files)}")  
+                
+            except ValueError as e:
+                print(f"Exception: {e}")                  
+                
+            self.state_data, self.label_data = self.cache_data()
+            torch.save(self.state_data, self.state_cache_path)
+            torch.save(self.label_data, self.label_cache_path)
+                    
+    
+    def cache_data(self):
+        
+        # Check shapes
+        temp_state = np.loadtxt(self.state_files[0])
+        temp_label = np.loadtxt(self.label_files[0])            
+        
+        # Placeholders for the data
+        state_data = np.empty([len(self.state_files), temp_state.shape[0], temp_state.shape[1]], dtype=np.float16)
+        label_data = np.empty([len(self.label_files), 1, temp_label.shape[0]], dtype=np.float16)
+        
+        for i, (state_file, label_file) in enumerate(zip(self.state_files, self.label_files)):
+            
+            state_data[i, ...] = np.loadtxt(state_file)
+            label_data[i, ...] = np.loadtxt(label_file)
+        
+        
+        return  torch.as_tensor(state_data), torch.as_tensor(label_data) 
+        
 
-            l = [] # error label files
-            for p in label_path if isinstance(label_path, list) else [label_path]:
-                p = str(Path(p))  # os-agnostic
-                parent = str(Path(p).parent) + os.sep
-                if os.path.isfile(p):  # file
-                    with open(p, 'r') as t:
-                        t = t.read().splitlines()
-                        l += [x.replace('./', parent) if x.startswith('./') else x for x in t]  # local to global path
-                elif os.path.isdir(p):  # folder
-                    l += glob.iglob(p + os.sep + '*.*')
-                else:
-                    raise Exception('%s does not exist' % p)
-
-            self.label_files = sorted([x.replace('/', os.sep) for x in l])
-
-        except Exception as e:
-            raise Exception('Error loading data from %s: %s\nSee %s' % (path, e, help_url))
-
-        n = len(self.pruningdata_files)
-        assert n > 0, 'No images found in %s. See %s' % (path, help_url)
-        bi = np.floor(np.arange(n) / batch_size).astype(np.int)  # batch index
-        nb = bi[-1] + 1  # number of batches
-
-        self.n = n  # number of pruning data rows
-        self.batch = bi  # batch index of data
-
-
+    
     def __len__(self):
-        return len(self.pruningdata_files)
+        return len(self.state_files)
 
 
     def __getitem__(self, index):
+        
+        return self.state_data[index, ...], self.label_data[index, ...]
 
-        # Pruning data row
-        #pruningdata_final = torch.zeros((3,8,44))
-        pruningdata_path = self.pruningdata_files[index % len(self.pruningdata_files)].rstrip()
-        pruningdata = np.loadtxt(pruningdata_path)
-        pruningdata = torch.as_tensor(pruningdata)
-        # print(f"data shape in dataset/__getitem__: {pruningdata.shape}")
-        #pruningdata = torch.reshape(pruningdata, (1, 8,-1))
-        # todo pruningdata = torch.reshape(pruningdata, (-1,))
-        #print(index, "data", pruningdata.shape)
-        #pruningdata_final[0,:,:] = pruningdata
-        #pruningdata_final[1, :, :] = pruningdata
-        #pruningdata_final[2, :, :] = pruningdata
-
-        # Label
-        label_path = self.label_files[index % len(self.label_files)].rstrip()
-        label = np.loadtxt(label_path)
-        label = torch.as_tensor(label)
-        label = torch.reshape(label, (1, -1))
-        # print(f"label shape in dataset/__getitem__: {label.shape}")
-
-
-        #print("Data path __getitem__: ", pruningdata_path)
-        #print("Label path __getitem__: ", label_path)
-
-        return pruningdata, label
-
+       
     def collate_fn(batch):
         data, label = zip(*batch)
         return torch.stack(data, 0), torch.cat(label, 0)
@@ -432,7 +453,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
 
         n = len(self.img_files)
         assert n > 0, 'No images found in %s. See %s' % (path, help_url)
-        bi = np.floor(np.arange(n) / batch_size).astype(np.int)  # batch index
+        bi = np.floor(np.arange(n) / batch_size).astype(np.int32)  # batch index
         nb = bi[-1] + 1  # number of batches
 
         self.n = n  # number of images
@@ -512,7 +533,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
                 elif mini > 1:
                     shapes[i] = [1, 1 / mini]
 
-            self.batch_shapes = np.ceil(np.array(shapes) * img_size / stride + pad).astype(np.int) * stride
+            self.batch_shapes = np.ceil(np.array(shapes) * img_size / stride + pad).astype(np.int32) * stride
 
         # Cache labels
         create_datasubset, extract_bounding_boxes, labels_loaded = False, False, False
@@ -556,7 +577,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
                         b = x[1:] * [w, h, w, h]  # box
                         b[2:] = b[2:].max()  # rectangle to square
                         b[2:] = b[2:] * 1.3 + 30  # pad
-                        b = xywh2xyxy(b.reshape(-1, 4)).ravel().astype(np.int)
+                        b = xywh2xyxy(b.reshape(-1, 4)).ravel().astype(np.int32)
 
                         b[[0, 2]] = np.clip(b[[0, 2]], 0, w)  # clip boxes outside of image
                         b[[1, 3]] = np.clip(b[[1, 3]], 0, h)
@@ -708,6 +729,144 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         for i, l in enumerate(label):
             l[:, 0] = i  # add target image index for build_targets()
         return torch.stack(img, 0), torch.cat(label, 0), path, shapes
+
+
+class LoadImagesAndLabelsFromDB():
+    def __init__(self, conf, split, img_size=640, batch_size=16, augment=False, hyp=None, rect=False, image_weights=False,
+                 cache_images=False, single_cls=False, stride=32, pad=0.0):
+        
+        
+        controller = ControllerCollector(conf, split)
+
+        self.data 
+
+        
+        
+        try:
+            f = []  # image files
+            for p in path if isinstance(path, list) else [path]:
+                p = str(Path(p))  # os-agnostic
+                parent = str(Path(p).parent) + os.sep
+                if os.path.isfile(p):  # file
+                    with open(p, 'r') as t:
+                        t = t.read().splitlines()
+                        f += [x.replace('./', parent) if x.startswith('./') else x for x in t]  # local to global path
+                elif os.path.isdir(p):  # folder
+                    f += glob.iglob(p + os.sep + '*.*')
+                else:
+                    raise Exception('%s does not exist' % p)
+            self.img_files = sorted(
+                [x.replace('/', os.sep) for x in f if os.path.splitext(x)[-1].lower() in img_formats])
+
+            """
+            l = []  # label files
+            for p in label_path if isinstance(label_path, list) else [label_path]:
+                p = str(Path(p))  # os-agnostic
+                parent = str(Path(p).parent) + os.sep
+                if os.path.isfile(p):  # file
+                    with open(p, 'r') as t:
+                        t = t.read().splitlines()
+                        l += [x.replace('./', parent) if x.startswith('./') else x for x in t]  # local to global path
+                elif os.path.isdir(p):  # folder
+                    l += glob.iglob(p + os.sep + '*.*')
+                else:
+                    raise Exception('%s does not exist' % p)
+            """
+
+            ## mywork ##
+            # use .png for KITTI and .jpg for PascalVoc
+            img_names = sorted([x for x in os.listdir(path) if x.endswith(".png") or x.endswith(".jpg")])
+            label_names = [x.replace("jpg", "txt").replace("png", "txt") for x in img_names]
+
+            self.label_files = [label_path + '/' + x for x in label_names]
+
+        except Exception as e:
+            raise Exception('Error loading data from %s: %s\nSee %s' % (path, e, help_url))
+
+        n = len(self.img_files)
+        assert n > 0, 'No images found in %s. See %s' % (path, help_url)
+        bi = np.floor(np.arange(n) / batch_size).astype(np.int32)  # batch index
+        nb = bi[-1] + 1  # number of batches
+
+        self.n = n  # number of images
+        self.batch = bi  # batch index of image
+        self.img_size = img_size
+        self.augment = augment
+        self.hyp = hyp
+        self.image_weights = image_weights
+        self.rect = False if image_weights else rect
+        self.rect = False if image_weights else rect
+        self.mosaic = self.augment and not self.rect  # load 4 images at a time into a mosaic (only during training)
+        self.mosaic_border = [-img_size // 2, -img_size // 2]
+        self.stride = stride
+
+        # Define labels
+        """
+        if  "val" in path:
+            self.label_files = [x.replace('val2017/val2017_small', 'val2017_annots_normalized').replace(os.path.splitext(x)[-1], '.txt') for x in
+                         self.img_files]
+            #self.label_files = [
+            #    x.replace('images/validation', 'labels').replace(os.path.splitext(x)[-1], '.txt') for x
+            #    in self.img_files]
+
+        elif "train" in path:
+
+            #self.label_files = [
+            #    x.replace('images/training', 'labels').replace(os.path.splitext(x)[-1], '.txt') for x
+            #    in self.img_files]
+
+            self.label_files = [x.replace('train2017_small', 'train2017_annots_normalized').replace(os.path.splitext(x)[-1], '.txt')
+                for x in self.img_files]
+
+        """
+        print("label file 0", self.label_files[0])
+        print("image file 0", self.img_files[0])
+
+
+        # Check cache
+        cache_path = str(Path(self.label_files[0]).parent) + '.cache'  # cached labels
+        print(cache_path)
+
+
+        if os.path.isfile(cache_path):
+            print("in IF")
+            cache = torch.load(cache_path)  # load
+            if cache['hash'] != get_hash(self.label_files + self.img_files):  # dataset changed
+                cache = self.cache_labels(cache_path)  # re-cache
+        else:
+            print("in ELSE")
+            cache = self.cache_labels(cache_path)  # cache
+
+        # Get labels
+        labels, shapes = zip(*[cache[x] for x in self.img_files])
+        self.shapes = np.array(shapes, dtype=np.float64)
+        self.labels = list(labels)
+
+        # Rectangular Training  https://github.com/ultralytics/yolov3/issues/232
+        print(f"self.rect in LoadImagesAndLabels: {self.rect}")
+        if self.rect:
+            # Sort by aspect ratio
+            s = self.shapes  # wh
+            ar = s[:, 1] / s[:, 0]  # aspect ratio
+            irect = ar.argsort()
+            self.img_files = [self.img_files[i] for i in irect]
+            self.label_files = [self.label_files[i] for i in irect]
+            self.labels = [self.labels[i] for i in irect]
+            self.shapes = s[irect]  # wh
+            ar = ar[irect]
+
+            # Set training image shapes
+            shapes = [[1, 1]] * nb
+            for i in range(nb):
+                ari = ar[bi == i]
+                mini, maxi = ari.min(), ari.max()
+                if maxi < 1:
+                    shapes[i] = [maxi, 1]
+                elif mini > 1:
+                    shapes[i] = [1, 1 / mini]
+
+            self.batch_shapes = np.ceil(np.array(shapes) * img_size / stride + pad).astype(np.int32) * stride
+
 
 
 # Ancillary functions --------------------------------------------------------------------------------------------------
