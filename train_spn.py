@@ -52,7 +52,7 @@ def train(model, optimizer, lr_sched, conf, epoch, device, dataloader, dataloade
     bestLoss = 10000
 
     while epoch < epochs:  
-        """          
+                  
         model.train()
         print(f"epoch {epoch}")
 
@@ -76,46 +76,22 @@ def train(model, optimizer, lr_sched, conf, epoch, device, dataloader, dataloade
 
             loss = criterion_dperf(denormalize(label_gt[:, 1], 0, 1),  denormalize(prediction[:, 0], 0, 1)) \
                    + criterion_spars(denormalize(label_gt[:, 0], 0, 1), denormalize(prediction[:, 1], 0, 1))
-            # loss = criterion_err(label_gt[:,0], prediction[:,0]) + criterion_spars(label_gt[:,1], prediction[:,1])
 
             loss.backward()
             optimizer.step()
             running_loss += loss.cpu().item()
-            # err, prec, neg_err, neg_corr, negsign_prec = calc_precision(error_gt, error_pred)
             metrics_sum_dperf += calc_metrics(label_gt[:, 1], prediction[:, 0], margin=conf.train.margin)
             metrics_sum_spars += calc_metrics(label_gt[:, 0], prediction[:, 1], margin=conf.train.margin)
-            #print(metrics_sum_dperf[0,0], tmp[2]) #error
-            #print(metrics_sum_dperf , tmp[0]) #accuracy
-            #print(metrics_sum_dperf[0,3], tmp[1], "\n") #negsign recall
-            #print(metrics_sum_dperf)
-            #print(tmp)
-
-            # print(batch_i, error_gt)
-
-            # if error_gt[0].item() < -0.8 and data[0][46]==-1:
-            # if error_gt[0].item() < -0.8 or error_gt[1].item() < -0.8 :
-
-            # print(data.view(-1,44))
+     
             print("Ground truth: ", label_gt[0,:])
             print("Predicted: ", prediction[0,:])
-            # cnnt += 1
-            # print("Error, prec", err, prec)
 
-            # print(f"{batch_i}/{len(dataloader)} batches done")
-
-        # print("cnt ", cnnt)
 
         # Calculate training metrics
         running_loss /= len(dataloader)
         metrics_avg_dperf = metrics_sum_dperf / len(dataloader)
         metrics_avg_spars = metrics_sum_spars / len(dataloader)
 
-
-        # metrics_avg[0, 2:4] = metrics_sum[0, 2:4] /len(dataloader)   # error, precision
-        # gt_negatives = metrics_sum[0, 7]
-        # print(gt_negatives)
-        # metrics_avg[0, 4:7] = metrics_sum[0, 4:7]/gt_negatives   # neg_error, negsign_hits, negsign_precision
-        """
 
         # VALIDATION
 
