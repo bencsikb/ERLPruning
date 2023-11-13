@@ -1,6 +1,7 @@
 import argparse
 import numpy as np
 import random
+import os
 import csv
 
 """ To run without import issues, move this file to the root folder. """
@@ -56,9 +57,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--dpath', default="/nas/blanka_phd/DATASETS/SPN/COCO/all/states")
     parser.add_argument('--spath', default="data/IDsForSplit")    
-    parser.add_argument('--batch_size', default=4096)    
-    parser.add_argument('--name_ext', default="spn_dsg_01_") 
+    parser.add_argument('--batch_size', default=1024)   
+    parser.add_argument('--ratio', default=[0.15, 0.08])     
+    parser.add_argument('--name_ext', default="spn_dsg_01") 
     opt = parser.parse_args()
     
-    split_data(opt.dpath, opt.spath, opt.batch_size, opt.name_ext)
+    split_data(opt.dpath, opt.spath, opt.batch_size, opt.ratio, opt.name_ext)
 
