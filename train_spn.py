@@ -177,7 +177,7 @@ if __name__ == '__main__':
     dataloader_val, dataset_val = create_pruning_dataloader(conf.data.data_path, conf.data.val_ids,  conf.data.cache_path, conf.data.cache_ext+"_val", batch_size=conf.train.batch_size, shuffle=False)
 
     if conf.model.pretrained:
-        ckpt = torch.load(os.path.join(conf.paths.model_dir, conf.model.pretrained))
+        ckpt = torch.load(conf.model.pretrained)
         epoch = ckpt['epoch']
         model = ckpt['model'].to(device)
         if conf.model.old:

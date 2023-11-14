@@ -53,6 +53,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', default='spn')
+    parser.add_argument('--batch_size', default=1)
     parser.add_argument('--device', default='')
     opt = parser.parse_args()
 
@@ -62,11 +63,10 @@ if __name__ == '__main__':
     else:
         device = conf.train.device
     
-    dataloader_val, dataset_val = create_pruning_dataloader(conf.data.data_path, conf.data.val_ids,  conf.data.cache_path, conf.data.cache_ext+"_val", batch_size=conf.train.batch_size)
-
+    dataloader_val, dataset_val = create_pruning_dataloader(conf.data.data_path, conf.data.val_ids,  conf.data.cache_path, conf.data.cache_ext+"_test", shuffle=False, batch_size=opt.batch_size) 
 
     if conf.model.pretrained:
-        ckpt = torch.load(os.path.join(conf.paths.model_dir, conf.model.pretrained))
+        ckpt = torch.load( conf.model.pretrained)
         epoch = ckpt['epoch']
         model = ckpt['model'].to(device)
         if conf.model.old:
