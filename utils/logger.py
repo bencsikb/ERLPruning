@@ -15,13 +15,7 @@ class BasicLogger():
 
         self.log_dir = os.path.join(log_dir, test_case)
         self.test_case = test_case
-        
-        # Do not overwrite existing test case
-        while os.path.exists(self.log_dir):
-            self.log_dir += '_cont'
-        
-        os.mkdir(self.log_dir)
-           
+        if not os.path.exists(self.log_dir): os.mkdir(self.log_dir)
 
     def log_settings(self, conf, settings_dict=None):
         # TODO this should be a method in ConfigPrser
