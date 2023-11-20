@@ -28,7 +28,7 @@ def validate(dataloader, model, criterion_dperf, criterion_spars, margin, device
 
     for batch_i, (data, label_gt) in enumerate(dataloader):
         data = data.type(torch.float32).to(device)
-        data = torch.cat((data[:, :, 0], data[:, :, -1]), dim=1).to(device)  # use only alpha and spars as state features
+        data = torch.cat((data[:, :, 0], data[:, :, -2], data[:, :, -1]), dim=1).to(device)  # use only alpha and spars as state features
         label_gt = label_gt.type(torch.float32).to(device)
         #print(f"datashape {data.shape}, labelshape {label_gt.shape}")
 

@@ -69,7 +69,7 @@ def train(model, optimizer, lr_sched, conf, epoch, device, dataloader, dataloade
             data = data.type(torch.float32).to(device)
             label_gt = label_gt.type(torch.float32).to(device)
             optimizer.zero_grad()
-            data = torch.cat((data[:, :, 0], data[:, :, -1]), dim=1).to(device)  # use only alpha and spars as state features
+            data = torch.cat((data[:, :, 0], data[:, :, -2], data[:, :, -1]), dim=1).to(device)  # use only alpha and spars as state features
             print(f"datashape {data.shape}, labelshape {label_gt.shape}")
             print(data.device)
             prediction = model(data)
@@ -160,7 +160,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', default='spn')
     parser.add_argument('--device', default='')
-    parser.add_argument('--test-case', type=str, default='trial1')
+    parser.add_argument('--test-case', type=str, default='scratch_01_reprod_with_ext_correct')
     opt = parser.parse_args()
 
     conf = ConfigParser.prepare_conf(opt)
@@ -200,7 +200,7 @@ if __name__ == '__main__':
     else:
         print("new model")
         epoch = 0
-        model = errorNet2(88, 2).to(device)
+        model = errorNet2(132, 2).to(device)
         #model.apply(init_weights)
         optimizer = torch.optim.Adam(model.parameters(), lr=conf.train.start_lr, weight_decay=1e-5)
         #optimizer = Lamb(model.parameters(), lr=0.001, weight_decay=1e-5)

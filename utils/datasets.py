@@ -74,13 +74,14 @@ def create_dataloader(path, label_path, imgsz, batch_size, stride, single_cls, h
 
 
 """ Suppliment for error prediction network. """
-def create_pruning_dataloader(data_path, sample_path, cache_path, cache_ext, batch_size, world_size=1):
+def create_pruning_dataloader(data_path, sample_path, cache_path, cache_ext, batch_size, shuffle, world_size=1):
     dataset = LoadPruningData(data_path, sample_path, cache_path, cache_ext)
     batch_size = min(batch_size, len(dataset))
     nw = min([os.cpu_count() // world_size, batch_size if batch_size > 1 else 0, 8])  # number of workers
     dataloader = torch.utils.data.DataLoader(dataset,
                                              batch_size=batch_size,
                                              num_workers=nw,
+                                             shuffle=shuffle,
                                              collate_fn=LoadPruningData.collate_fn)
     return dataloader, dataset
 
@@ -358,7 +359,7 @@ class LoadPruningData():
                     print(f"The file '{sample_file}' was not found.")
                 
     
-                self.state_files = [os.path.join(data_path, 'states', str(sample) + '.txt')  for sample in samples]
+                self.state_files = [os.path.join(data_path, 'exp_states', str(sample) + '.txt')  for sample in samples]
                 self.label_files = [os.path.join(data_path, 'labels', sample + '.txt') for sample in samples]
             
                 # Check if there are same number of state and label files
@@ -393,7 +394,6 @@ class LoadPruningData():
         
         return  torch.as_tensor(state_data), torch.as_tensor(label_data) 
         
-
     
     def __len__(self):
         return self.state_data.shape[0]
@@ -401,7 +401,13 @@ class LoadPruningData():
 
     def __getitem__(self, index):
         
-        return self.state_data[index, ...], self.label_data[index, ...]
+        return self.augment_state(self.state_data[index, ...]), self.label_data[index, ...]
+
+    
+    def augment_state(self, state):        
+        noise = np.random.normal(0, 0.0001, state.shape)  
+        noise[:, -1] = 0.0 # do not change the sparsity 
+        return state + noise
 
        
     def collate_fn(batch):
