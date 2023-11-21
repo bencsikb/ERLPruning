@@ -79,7 +79,7 @@ if __name__ == '__main__':
     # Define alpha values
     #alphas = np.arange(0.0, 2.3, 0.1).tolist()
     #alphas = [float("{:.2f}".format(x)) for x in alphas]
-    alphas = [0.0, 1.0, 2.0]
+    alphas = conf.prune.alphas
 
     # Initialize actor and critic networks
 
