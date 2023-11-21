@@ -18,8 +18,8 @@ def denormalize(x, x_min, x_max):
 
     if torch.is_tensor(x):
         ret = ((x + 1) * (x_max - x_min)) / 2 + x_min
-    elif len(x):
-        ret = [((xi + 1) * (x_max - x_min)) / 2 + x_min for xi in x]
+    #elif len(x):
+    #    ret = [((xi + 1) * (x_max - x_min)) / 2 + x_min for xi in x]
     else:
         x = float(x)
         ret = ((x + 1) * (x_max - x_min)) / 2 + x_min
@@ -106,7 +106,7 @@ def get_state(prev_state, action_seq, network_seq, layer, layer_index, layer_cnt
     return state, new_network_seq
 
 
-def get_state2(state, sparsity, layer, layer_cnt):
+def get_state2(state, sparsity, dmap, layer, layer_cnt):
     i = layer_cnt
 
     state[:, 0, i] = normalize(layer.in_channels, 0, 1024)
@@ -115,6 +115,8 @@ def get_state2(state, sparsity, layer, layer_cnt):
     state[:, 3, i] = normalize(layer.stride[0], 0, 2)
     state[:, 4, i] = normalize(layer.padding[0], 0, 1)
     state[:, 5, i] = sparsity
+    if state.shape[1] == 7:
+        state[:, 6, i] = dmap
 
     return state
 
@@ -340,3 +342,87 @@ def test_alpha_seq(error, sparsity, reward, alpha_seq, yolo_layers, test_case, e
                 print("catched")
                 continue
 
+
+def validate_spn():
+    """
+    Perform a validation on the validation set using the given alpha sequence.
+    """
+    
+    batch_size = error.shape[0]
+    error = error.squeeze(0)
+    sparsity = sparsity.squeeze(0)
+    reward = reward.squeeze(0)
+    layer_to_prune = 43
+    save_path = F"final_results/{test_case}.txt"
+    save_excel_path = F"final_results/exc_{test_case}.txt"
+    
+    # Run outlier detection for the whole tensor 
+    # Get the indices of the outliers
+    # Run validation only for the samples with given ids
+    # Rewrite the spars and error 
+    
+
+
+    for bi in range(batch_size):
+
+
+                print(F"Sample: {bi}, Error: {error[bi]}, Sparsity: {sparsity[bi]}, Reward: {reward[bi]}")
+                print(alpha_seq[bi, :])
+                f.write(F"Sample: {bi}, Error: {error[bi]}, Sparsity: {sparsity[bi]}, Reward: {reward[bi]}\n")
+                f.write(str(alpha_seq[bi, :]) + "\n")
+
+                # Load trained YOLOv4 net
+                net_for_pruning = Darknet(opt.cfg).to(opt.device)
+                net_for_pruning.load_darknet_weights(opt.weights)
+                #ckpt_nfp = torch.load(opt.network_forpruning)
+                #state_dict = {k: v for k, v in ckpt_nfp['model'].items() if
+                #              net_for_pruning.state_dict()[k].numel() == v.numel()}
+                #net_for_pruning.load_state_dict(state_dict, strict=False)
+
+                # Pruning
+                #alpha_seq = torch.tensor(
+                #    [0.0, 0., 0., 0., 0., 0., 0, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0, 0., 0., 0., 0., 0., 0., 0.,
+                #     0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0, 0., 0., 0., 0., 0.])
+                param_nmb_before = sum([param.nelement() for param in net_for_pruning.parameters()])
+                print("param_nmb_before", param_nmb_before)
+                pruned_network = prune_network(net_for_pruning, yolo_layers, layer_to_prune, alpha_seq[bi,:], device='cuda')
+                param_nmb_after = sum([param.nelement() for param in pruned_network.parameters()])
+                print("param_nmb_after", param_nmb_after)
+                f.write(F"param before: {param_nmb_before}, param after: {param_nmb_after}, ")
+
+                # Real sparsity
+                real_sparsity = float(1 - param_nmb_after / param_nmb_before)
+
+                # Real error
+                results, _, _ = test(
+                    opt.data,
+                    batch_size=1,
+                    imgsz=540,
+                    conf_thres=0.001,
+                    iou_thres=0.5,
+                    save_json=False,  # save json
+                    single_cls=opt.single_cls,
+                    augment=opt.augment,
+                    verbose=opt.verbose,
+                    model=pruned_network.to(opt.device),
+                    opt=opt,
+                    called_directly=True)
+
+                prec_after, rec_after, map_after = results[0], results[1], results[2]
+                print("map_after ", map_after)
+                f.write(F"mAP after: {map_after}\n")
+                real_error = 1.0 - (float(map_after) / float(opt.map_before))
+
+                print(F"Real error: {real_error}, Real_spars: {real_sparsity}")
+                f.write(F"Real error: {real_error}, Real_spars: {real_sparsity}\n")
+
+                with open(save_excel_path, 'a+') as ef:
+                    ef.write(F"{bi} {real_error} {real_sparsity}\n")
+
+
+
+    
+    #
+    # Load model to prune
+    
+    # Prune the network

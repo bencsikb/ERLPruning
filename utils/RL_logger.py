@@ -21,7 +21,7 @@ class RLLogger():
         if not os.path.exists(self.log_dir): os.mkdir(self.log_dir)
 
     def log_settings(self, opt, settings_dict: dict):
-        path = os.path.join(self.log_dir, "settings.txt")
+        path = os.path.join(self.log_dir, "RL_spec_settings.txt")
         with open(path, 'a+') as file:
             json.dump(opt.__dict__, file, indent=2)
             file.write("\n")
