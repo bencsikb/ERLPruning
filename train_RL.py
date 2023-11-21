@@ -24,6 +24,7 @@ from utils.LR_losses import CriticLoss, ActorLoss, ActorPPOLoss, get_discounted_
     get_discounted_reward
 # from utils.state_tester import get_fix_state
 from utils.RL_logger import RLLogger, TensorboardLogger
+from utils.logger import BasicLogger
 from utils.torch_utils import init_seeds
 from utils.optimizers import RAdam, Lamb
 from utils.config_parser import ConfigParser
@@ -38,7 +39,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', default="rl_agent")
     parser.add_argument('--device', type=str, default='')
-    parser.add_argument('--test-case', type=str, default='trans_spn6_04a')
+    parser.add_argument('--test-case', type=str, default='old_with_reduced_action_space_02')
 
     # Flags
     parser.add_argument('--variable_logflag', type=bool, default=True)
@@ -61,22 +62,24 @@ if __name__ == '__main__':
     # Create logger
     rl_logger = RLLogger(log_dir=os.path.join(conf.paths.log_dir, conf.logging.folder), test_case=opt.test_case)
     tb_logger = TensorboardLogger(log_dir=os.path.join(conf.paths.log_dir, conf.logging.folder), test_case=opt.test_case)
+    txt_logger = BasicLogger(log_dir=os.path.join(conf.paths.log_dir, conf.logging.folder), test_case=opt.test_case)
 
     # Load pretrained nets
     net_for_pruning = Darknet(conf.models.cfg_to_prune).to(device)
-    ckpt_nfp = torch.load(os.path.join(conf.paths.model_dir, conf.models.to_prune))
+    ckpt_nfp = torch.load(conf.models.to_prune, map_location=device)
     state_dict = {k: v for k, v in ckpt_nfp['model'].items() if net_for_pruning.state_dict()[k].numel() == v.numel()}
     net_for_pruning.load_state_dict(state_dict, strict=False)
     network_size = len(net_for_pruning.module_list)
 
     # Load pretrained SPN
-    ckpt_spn = torch.load(os.path.join(conf.paths.model_dir, conf.models.spn), map_location=device)
+    ckpt_spn = torch.load(conf.models.spn, map_location=device)
     spn = ckpt_spn['model']
     spn.eval()
 
     # Define alpha values
-    alphas = np.arange(0.0, 2.3, 0.1).tolist()
-    alphas = [float("{:.2f}".format(x)) for x in alphas]
+    #alphas = np.arange(0.0, 2.3, 0.1).tolist()
+    #alphas = [float("{:.2f}".format(x)) for x in alphas]
+    alphas = [0.0, 1.0, 2.0]
 
     # Initialize actor and critic networks
 
@@ -107,9 +110,9 @@ if __name__ == '__main__':
     else:
         print("new model")
 
-        actorNet = actorNet2(conf.prune.n_prunable_layers * 6, len(alphas)).to(device)
+        actorNet = actorNet2(conf.prune.n_prunable_layers * 7, len(alphas)).to(device)
         #actorNet.apply(init_weights)
-        criticNet = criticNet(conf.prune.n_prunable_layers * 6, 1).to(device)
+        criticNet = criticNet(conf.prune.n_prunable_layers * 7, 1).to(device)
         if conf.a2c.optim == 'adam':
             actor_optimizer = torch.optim.Adam(actorNet.parameters(), lr=conf.a2c.actor_base_lr)
             critic_optimizer = torch.optim.Adam(criticNet.parameters(), lr=conf.a2c.critic_base_lr)
@@ -141,7 +144,8 @@ if __name__ == '__main__':
                      "critic_lr": critic_optimizer.param_groups[0]['lr'],
                      "actor_lr_sched": lr_sched.get_lr()[0]
                      }
-    rl_logger.log_settings(opt, settings_dict)
+    ConfigParser.save(conf, os.path.join(conf.paths.log_dir, conf.logging.folder, conf.dynamic.test_case, conf.logging.log_folder, "settings.txt"))
+    
 
     while episode < conf.train.episodes:
         start_time_episode = time.time()
@@ -153,7 +157,9 @@ if __name__ == '__main__':
         init_param_nmb = sum([param.nelement() for param in net_for_pruning.parameters()])
 
         action_seq = torch.full([conf.train.batch_size, 1, conf.prune.n_prunable_layers], -1.0)
-        state_seq = torch.full([conf.train.batch_size, 6, conf.prune.n_prunable_layers], -1.0)
+        if conf.state.ext_state: n_features = 7
+        else: n_features = 6
+        state_seq = torch.full([conf.train.batch_size, n_features, conf.prune.n_prunable_layers], -1.0)
 
         actions = []
         states = []
@@ -181,7 +187,7 @@ if __name__ == '__main__':
 
                 # Get state
                 # state_seq = Variable(get_state2(state_seq, sparsity_prev, layer, layer_cnt), requires_grad=True)
-                state_seq = get_state2(state_seq, sparsity_prev, layer, layer_cnt)
+                state_seq = get_state2(state_seq, sparsity_prev, error_prev, layer, layer_cnt)
 
                 data = state_seq.view([conf.train.batch_size, -1]).type(torch.float32).to(device)
 
@@ -213,7 +219,7 @@ if __name__ == '__main__':
 
                 # Get the error for every sample in the batch
                 spn_input_data = torch.cat((action_seq, state_seq[:, -1, :].unsqueeze(1)), dim=1).view(
-                    [conf.train.batch_size, -1]).type(torch.float32).to(device)
+                        [conf.train.batch_size, -1]).type(torch.float32).to(device)
                 prediction = spn(spn_input_data)
                 error, sparsity = prediction[:,0], prediction[:,1]
                 errors.append(error.detach().unsqueeze(1))
@@ -377,7 +383,7 @@ if __name__ == '__main__':
         # Save the checkpoint with episode
         if episode % conf.train.save_interval == 0:
             ckp_save_path = os.path.join(conf.paths.log_dir, conf.logging.folder, opt.test_case)
-            torch.save(checkpoint, os.path.join(ckp_save_path, f"{episode}.pth)"))
+            torch.save(checkpoint, os.path.join(ckp_save_path, f"{episode}.pth"))
             rl_logger.save_action_csv(episode, actions, errors, states)
 
 
