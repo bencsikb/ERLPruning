@@ -18,7 +18,7 @@ from models.models import *
 from utils.LR_utils import normalize, denormalize, get_state, get_state2, get_prunable_layers_yolov4, list2FloatTensor, \
     test_alpha_seq
 from models.LR_models import actorNet, criticNet, actorNet2, init_weights
-from utils.RL_rewards import reward_function, reward_function2, reward_function3, reward_function4, reward_function5, \
+from utils.RL_rewards import reward_function_proposed, reward_function2, reward_function3, reward_function4, reward_function5, \
     reward_function6
 from models.error_pred_network import errorNet
 from utils.LR_losses import CriticLoss, ActorLoss, ActorPPOLoss, get_discounted_reward, get_advantage, \
@@ -54,14 +54,15 @@ if __name__ == '__main__':
 
     # For reward function
     parser.add_argument('--reward-func', type=str, default="reward_function_proposed")
-    parser.add_argument('--err_coef', type=int, default=1.1)
-    parser.add_argument('--spars_coef', type=int, default=1)
-    parser.add_argument('--target_error', type=int, default=0.2)
-    parser.add_argument('--target_spars', type=int, default=0.6)
+    # Proposed
+    parser.add_argument('--err_coef', type=float, default=1.1)
+    parser.add_argument('--spars_coef', type=float, default=1)
+    parser.add_argument('--target_error', type=float, default=0.2)
+    parser.add_argument('--target_spars', type=float, default=0.6)
     parser.add_argument('--beta', type=int, default=5)
-    # parser.add_argument('--A', type=int, default=2)
-    # parser.add_argument('--B', type=int, default=1)
-    # parser.add_argument('--N', type=int, default=2)
+
+
+
 
     # Flags
     parser.add_argument('--variable_logflag', type=bool, default=True)
