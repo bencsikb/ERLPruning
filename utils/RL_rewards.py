@@ -1,25 +1,20 @@
 import torch
 import numpy as np
 
-def reward_function(A, Ta, S, Ts, err_coeff, spars_coeff, device, beta=5):
+def reward_function_proposed(dmap, Tdmap, spars, Ts, dmap_coeff, spars_coeff, device, beta=5):
     """
-    :param A: accuracy deterioration (error)
-    :param Ta: desired accuracy deterioration (maximal)
-    :param S: sparsity (percent of pruned parameters
-    :param Ts: desired sparsity
+    :param dmap: mAP deterioration (error)
+    :param Tdmap: desired mAP deterioration (maximal)
+    :param spars: sparsity (percent of pruned parameters
+    :param Tspars: desired sparsity
     :return: reward
     """
-    baseline = 100
-    baseline_tens = torch.full(A.shape, baseline, dtype=torch.float32)
 
     zerotens = torch.zeros(A.shape).to(device)
-    #reward = baseline_tens - beta* (torch.max( (A-Ta)/(1-Ta), zerotens) + torch.max( 1 - S/Ts, zerotens))
-    reward = - beta* (err_coeff*torch.max( (A-Ta)/(1-Ta), zerotens) + spars_coeff*torch.max( 1 - S/Ts, zerotens))
+    reward = - beta* (dmap_coeff*torch.max( (dmap-Tdmap)/(1-Tdmap), zerotens) + spars_coeff*torch.max( 1 - spars/Tspars, zerotens))
 
-    #print("A", A)
-    #print("S", A-Ta)
-    #print(torch.max( (A-Ta)/(1-Ta), zerotens))
     return reward
+
 
 def reward_function2(params, error, sparsity, baseline):
 

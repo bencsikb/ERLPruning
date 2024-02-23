@@ -53,7 +53,7 @@ if __name__ == '__main__':
     parser.add_argument('--n-prunable-layers', type=int, default=44)
 
     # For reward function
-    parser.add_argument('--reward-func', type=str, default="reward_function")
+    parser.add_argument('--reward-func', type=str, default="reward_function_proposed")
     parser.add_argument('--err_coef', type=int, default=1.1)
     parser.add_argument('--spars_coef', type=int, default=1)
     parser.add_argument('--target_error', type=int, default=0.2)
