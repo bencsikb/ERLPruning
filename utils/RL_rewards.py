@@ -10,7 +10,7 @@ def reward_function_proposed(dmap, Tdmap, spars, Ts, dmap_coeff, spars_coeff, de
     :return: reward
     """
 
-    zerotens = torch.zeros(A.shape).to(device)
+    zerotens = torch.zeros(dmap.shape).to(device)
     reward = - beta* (dmap_coeff*torch.max( (dmap-Tdmap)/(1-Tdmap), zerotens) + spars_coeff*torch.max( 1 - spars/Tspars, zerotens))
 
     return reward
