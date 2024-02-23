@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 
-def reward_function_proposed(dmap, Tdmap, spars, Ts, dmap_coeff, spars_coeff, device, beta=5):
+def reward_function_proposed(dmap, Tdmap, spars, Tspars, dmap_coeff, spars_coeff, device, beta=5):
     """
     :param dmap: mAP deterioration (error)
     :param Tdmap: desired mAP deterioration (maximal)
@@ -14,6 +14,7 @@ def reward_function_proposed(dmap, Tdmap, spars, Ts, dmap_coeff, spars_coeff, de
     reward = - beta* (dmap_coeff*torch.max( (dmap-Tdmap)/(1-Tdmap), zerotens) + spars_coeff*torch.max( 1 - spars/Tspars, zerotens))
 
     return reward
+
 
 
 def reward_function2(params, error, sparsity, baseline):
