@@ -10,11 +10,31 @@ def reward_function_proposed(dmap, Tdmap, spars, Tspars, dmap_coeff, spars_coeff
     :return: reward
     """
 
+    print(Tdmap)
+
     zerotens = torch.zeros(dmap.shape).to(device)
     reward = - beta* (dmap_coeff*torch.max( (dmap-Tdmap)/(1-Tdmap), zerotens) + spars_coeff*torch.max( 1 - spars/Tspars, zerotens))
 
     return reward
 
+
+def reward_function_purl(dmap, Tmap, spars, Tspars, map_before, device, beta=5):
+    """
+    :param dmap: mAP deterioration (error)
+    :param Tmap: desired final mAP (after pruning)
+    :param spars: sparsity (percent of pruned parameters
+    :param Tspars: desired sparsity
+    :return: reward
+    """
+
+    # Compute the mAP value after pruning from dmap 
+    onestens = torch.ones(dmap.shape).to(device)
+    map_after = (1 - dmap) * map_before
+
+    zerotens = torch.zeros(dmap.shape).to(device)
+    reward = - beta* (torch.max( 1-map_after/Tmap, zerotens) + torch.max( 1 - spars/Tspars, zerotens))
+
+    return reward
 
 
 def reward_function2(params, error, sparsity, baseline):

@@ -18,8 +18,7 @@ from models.models import *
 from utils.LR_utils import normalize, denormalize, get_state, get_state2, get_prunable_layers_yolov4, list2FloatTensor, \
     test_alpha_seq
 from models.LR_models import actorNet, criticNet, actorNet2, init_weights
-from utils.RL_rewards import reward_function_proposed, reward_function2, reward_function3, reward_function4, reward_function5, \
-    reward_function6
+from utils.RL_rewards import reward_function_proposed, reward_function_purl
 from models.error_pred_network import errorNet
 from utils.LR_losses import CriticLoss, ActorLoss, ActorPPOLoss, get_discounted_reward, get_advantage, \
     get_discounted_reward
@@ -53,15 +52,17 @@ if __name__ == '__main__':
     parser.add_argument('--n-prunable-layers', type=int, default=44)
 
     # For reward function
-    parser.add_argument('--reward-func', type=str, default="reward_function_proposed")
+    parser.add_argument('--reward-func', type=str, default="reward_function_purl")
     # Proposed
     parser.add_argument('--err_coef', type=float, default=1.1)
     parser.add_argument('--spars_coef', type=float, default=1)
     parser.add_argument('--target_error', type=float, default=0.2)
     parser.add_argument('--target_spars', type=float, default=0.6)
     parser.add_argument('--beta', type=int, default=5)
-
-
+    #PuRL
+    parser.add_argument('--Tmap', type=float, default=0.6)
+    parser.add_argument('--Tspars', type=float, default=0.6)
+    parser.add_argument('--map_before', type=float, default=0.726)
 
 
     # Flags
@@ -270,16 +271,11 @@ if __name__ == '__main__':
                 ## error = error.detach()
                 ## sparsity = sparsity.detach()
 
-                # reward = reward_function(A=denormalize(error, 0, 1), Ta=opt.target_error, S=denormalize(sparsity, 0, 1), Ts=opt.target_spars, device=opt.device)
-                # reward = reward_function3(E=denormalize(error-error_prev, 0, 1), S=denormalize(sparsity-sparsity_prev, 0, 1), Te=opt.target_error, Ts=opt.target_spars, saprs_coef=opt.spars_coef, err_coef=opt.err_coef, device=opt.device)
-                # dE = torch.sub(denormalize(error,0,1), denormalize(error_prev.to(opt.device),0,1))
-                # dS = torch.sub(denormalize(sparsity,0,1), denormalize(sparsity_prev.to(opt.device),0,1))
-                # reward = eval(opt.reward_func)( error, sparsity, opt.spars_coef, opt.err_coef, opt.device) # reward_functio4
-                # reward = eval(opt.reward_func)( denormalize(error, 0, 1), denormalize(sparsity, 0, 1), opt.target_spars, opt.beta, opt.device) # reward_functio5
-                reward = eval(opt.reward_func)(denormalize(error, 0, 1), opt.target_error, denormalize(sparsity, 0, 1),
-                                               opt.target_spars, opt.err_coef, opt.spars_coef, opt.device,
-                                               opt.beta)  # reward_function
-                # reward = eval(opt.reward_func)( error, sparsity, opt.A, opt.B, opt.N, opt.device) # reward_functio6
+                #reward = eval(opt.reward_func)(denormalize(error, 0, 1), opt.target_error, denormalize(sparsity, 0, 1),
+                #                               opt.target_spars, opt.err_coef, opt.spars_coef, opt.device, opt.beta)  # reward_function_proposed
+                
+                reward = eval(opt.reward_func)(denormalize(error, 0, 1), opt.Tmap, denormalize(sparsity, 0, 1),
+                                               opt.Tspars, opt.map_before, opt.device, opt.beta)  # reward_function_purl
 
                 reward = reward.unsqueeze(1)
                 ## rewards_list.append(reward)
