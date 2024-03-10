@@ -1,0 +1,12 @@
+all_state: /nas/blanka_phd/DATASETS/SPN/COCO/all/states
+train_state: /nas/blanka_phd/DATASETS/SPN/COCO/training/states
+val_state: /nas/blanka_phd/DATASETS/SPN/COCO/validation/states
+test_state: /nas/blanka_phd/DATASETS/SPN/COCO/validation/states
+
+
+all_label: /nas/blanka_phd/DATASETS/SPN/COCO/all/labels
+train_label: /nas/blanka_phd/DATASETS/SPN/COCO/training/labels
+val_label:  /nas/blanka_phd/DATASETS/SPN/COCO/validation/labels
+test_label:  /nas/blanka_phd/DATASETS/SPN/COCO/validation/labels
+
+allsamples: /nas/blanka_phd/DATASETS/SPN/COCO/samples.pkl

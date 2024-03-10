@@ -1,0 +1,81 @@
+ 					   	   Class    Images     Targets         P           R          mAP@.5    mAP@.5:.95:   remaining params ratio	speed (inference/NMS/total per 540x540 image at batch-size 1)
+
+exp_kitti2/weights/best.pt
+KITTI validation set with basic YOLOv4:    	    all    2.24e+03    1.54e+04       0.673       0.715        0.71       0.423		
+
+
+KITTI validation set with best RL YOLOv4:  	    all    2.24e+03    1.54e+04       0.681       0.722       0.713       0.428      0.5106324297524041	 21.2/0.8/22.0 ms
+
+KITTI validation with handcrafted1:        	    all    2.24e+03    1.54e+04       0.672       0.733       0.723        0.44	      0.606203183000341		 22.0/0.8/22.8 ms
+
+KITTI validation with handcrafted2:  	   	    all    2.24e+03    1.54e+04       0.672       0.733       0.724        0.44	      0.6785489876754524	22.7/0.8/23.5 ms
+
+
+
+exp_kitti33/weights/200.pt						        precision   recall      mAP@.5	    mAP@.95     remaining params [%]
+
+KITTI validation set with basic YOLOv4:		    all    2.24e+03    1.54e+04       0.611       0.706       0.679       0.396 				 24.7/0.8/25.5 ms 
+KITTI validation set with best RL policy:	    all    2.24e+03    1.54e+04       0.661       0.711       0.703       0.425       0.508911350014159		 21.2/0.8/22.0 m
+KITTI validation with handcrafted1:                   all    2.24e+03    1.54e+04       0.648       0.704       0.693       0.412       0.6068034884108765	 	22.3/0.8/22.7 ms 
+KITTI validation with handcrafted2:		    all    2.24e+03    1.54e+04       0.648       0.704       0.694       0.413	      0.6782767808688005	 	22.4/0.8/23.2 ms 
+
+
+
+(exp_kitti33/202.pt)
+PascalVoc entire set with basic YOLOv4:	   	   all    3.42e+03    8.05e+03       0.00304     0.00271    0.000415    0.000178	 		24.6/0.8/25.3 ms
+ 
+PascalVoc validation set with best RL YOLOv4:  	   all    3.42e+03    8.05e+03       0.00789    0.000918    0.000527    0.000161       0.508911350014159  	21.3/0.8/22.1 ms
+
+PascalVoc validation set with handcrafted1:	   all    3.42e+03    8.05e+03       0.00795     0.00105    0.000502    0.000176       0.6068034884108765	22.1/0.8/22.9 ms 
+
+PascalVoc validation set with handcrafted2:	   
+
+
+
+(exp_pascalvoc_from_kitti/best.pt)
+
+PascalVoc entire set with basic YOLOv4:		    all    3.42e+03    7.99e+03       0.239       0.255       0.171      0.0797					 25.5/0.8/26.3 ms 	   	   
+ 
+PascalVoc validation set with best RL YOLOv4:  	    all    3.42e+03    7.99e+03       0.458      0.0425      0.0666       0.033		0.512348664704112 	 22.2/0.8/23.0 ms	   
+
+PascalVoc validation set with handcrafted1:	    all    3.42e+03    7.99e+03       0.424      0.0457      0.0644      0.0327 	0.6075109992581044	 22.8/0.8/23.7 ms  
+
+PascalVoc validation set with handcrafted2:	    all    3.42e+03    7.99e+03       0.424      0.0457      0.0662      0.0334		 0.678766307327197	 23.5/0.7/24.3 ms
+
+
+
+(exp_kitti_tvt/best.pt)						    precision   recall      mAP@.5	mAP@.95	 remaining params [%]
+
+KITTI validation set:  	 		all    1.49e+03    1.02e+04       0.669        0.73       0.726       0.436			  	24.4/0.8/25.2 ms 
+KITTI RL pruned on validation:  	        	all    1.49e+03    1.02e+04       0.677       0.697       0.696       0.416	 0.5106563119297446	 	21.1/0.8/21.9 ms
+KITTI handcrafted 1 on validation:	        	all    1.49e+03    1.02e+04        0.67       0.695       0.694       0.415	 0.6079883132377627	 	21.8/0.8/22.6 ms
+KITTI handcrafted 2 on validation:		all    1.49e+03    1.02e+04        0.67       0.695       0.696       0.416	 0.6794616056956867	 	22.4/0.8/23.2 ms
+
+KITTI testing set:     			all    1.49e+03    1.03e+04       0.673       0.752       0.739       0.452	
+KITTI RL pruned on testing: 		all    1.49e+03    1.03e+04       0.669        0.71       0.705       0.436	 0.5106563119297446
+KITTI handcrafted 1 on testing:		all    1.49e+03    1.03e+04       0.674       0.715       0.707       0.432	 0.6079883132377627
+KITTI handcrafted 2 on testing: 		all    1.49e+03    1.03e+04       0.674       0.715       0.708       0.433	 0.6794616056956867
+
+
+
+
+PascalVoc
+
+validation
+
+original		all    3.42e+03    8.05e+03       0.452       0.323       0.293       0.164
+RL policy 	 	all    3.42e+03    8.05e+03       0.458      0.0983       0.119      0.0662
+handcrafted1	 	all    3.42e+03    8.05e+03       0.528      0.0916       0.126      0.0695
+handceafted2 	 	all    3.42e+03    8.05e+03       0.528      0.0916       0.129      0.0704	 0.6794861386713594
+
+
+
+
+test
+original		all    3.42e+03    7.99e+03	      0.455       0.324	   0.294	     0.163
+RL policy		all    3.42e+03    7.99e+03       0.433      0.0927       0.113      0.0618	 0.5110161850247317	22.8/0.8/23.6 ms
+handcrafted1	all    3.42e+03    7.99e+03       0.507      0.0864       0.122      0.0666	 0.6079382010003404	23.0/0.8/23.8 
+handceafted2	all    3.42e+03    7.99e+03       0.507      0.0864       0.124      0.0674	 0.6794861386713594	23.6/0.8/24.3
+
+
+
