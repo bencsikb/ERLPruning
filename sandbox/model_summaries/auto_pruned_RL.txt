@@ -1,0 +1,487 @@
+Network size: 162
+Layer 0
+Conv2d(3, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(32, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 1
+Conv2d(32, 64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False)
+BatchNorm2d(64, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 2
+Conv2d(64, 64, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(64, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 3
+Layer 4
+Conv2d(64, 64, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(64, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 5
+Conv2d(64, 32, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(32, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 6
+Conv2d(32, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(64, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 7
+Layer 8
+Conv2d(64, 64, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(64, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 9
+Layer 10
+Conv2d(128, 64, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(64, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 11
+Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 12
+Conv2d(128, 64, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(64, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 13
+Layer 14
+Conv2d(128, 64, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(64, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 15
+Conv2d(64, 64, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(64, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 16
+Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(64, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 17
+Layer 18
+Conv2d(64, 64, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(64, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 19
+Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(64, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 20
+Layer 21
+Conv2d(64, 64, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(64, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 22
+Layer 23
+Conv2d(128, 128, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 24
+Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 25
+Conv2d(256, 128, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 26
+Layer 27
+Conv2d(256, 128, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 28
+Conv2d(128, 128, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 29
+Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 30
+Layer 31
+Conv2d(128, 128, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 32
+Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 33
+Layer 34
+Conv2d(128, 128, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 35
+Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 36
+Layer 37
+Conv2d(128, 128, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 38
+Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 39
+Layer 40
+Conv2d(128, 128, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 41
+Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 42
+Layer 43
+Conv2d(128, 128, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 44
+Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 45
+Layer 46
+Conv2d(128, 128, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 47
+Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 48
+Layer 49
+Conv2d(128, 128, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 50
+Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 51
+Layer 52
+Conv2d(128, 128, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 53
+Layer 54
+Conv2d(256, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 55
+Conv2d(256, 512, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False)
+BatchNorm2d(512, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 56
+Conv2d(512, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 57
+Layer 58
+Conv2d(512, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 59
+Conv2d(256, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 60
+Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 61
+Layer 62
+Conv2d(256, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 63
+Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 64
+Layer 65
+Conv2d(256, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 66
+Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 67
+Layer 68
+Conv2d(256, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 69
+Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 70
+Layer 71
+Conv2d(256, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 72
+Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 73
+Layer 74
+Conv2d(256, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 75
+Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 76
+Layer 77
+Conv2d(256, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 78
+Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 79
+Layer 80
+Conv2d(256, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 81
+Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 82
+Layer 83
+Conv2d(256, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 84
+Layer 85
+Conv2d(512, 512, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(512, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 86
+Conv2d(512, 44, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False)
+BatchNorm2d(44, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 87
+Conv2d(44, 512, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(512, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 88
+Layer 89
+Conv2d(44, 26, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(26, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 90
+Conv2d(26, 512, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(512, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 91
+Conv2d(512, 26, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(26, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 92
+Layer 93
+Conv2d(26, 512, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(512, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 94
+Conv2d(512, 26, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(26, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 95
+Layer 96
+Conv2d(26, 512, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(512, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 97
+Conv2d(512, 26, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(26, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 98
+Layer 99
+Conv2d(26, 512, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(512, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 100
+Conv2d(512, 26, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(26, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 101
+Layer 102
+Conv2d(26, 512, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(512, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 103
+Layer 104
+Conv2d(1024, 1024, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(1024, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+MishCuda()
+Layer 105
+Conv2d(1024, 24, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(24, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 106
+Conv2d(24, 1024, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(1024, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 107
+Conv2d(1024, 512, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(512, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 108
+Layer 109
+Layer 110
+Layer 111
+Layer 112
+Layer 113
+Layer 114
+Conv2d(2048, 512, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(512, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 115
+Conv2d(512, 299, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(299, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 116
+Conv2d(299, 512, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(512, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 117
+Conv2d(512, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 118
+Layer 119
+Layer 120
+Conv2d(512, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 121
+Layer 122
+Conv2d(512, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 123
+Conv2d(256, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(512, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 124
+Conv2d(512, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 125
+Conv2d(256, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(512, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 126
+Conv2d(512, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 127
+Conv2d(256, 128, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 128
+Layer 129
+Layer 130
+Conv2d(256, 128, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 131
+Layer 132
+Conv2d(256, 128, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 133
+Conv2d(128, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 134
+Conv2d(256, 128, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 135
+Conv2d(128, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 136
+Conv2d(256, 128, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(128, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 137
+Conv2d(128, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 138
+Conv2d(256, 42, kernel_size=(1, 1), stride=(1, 1))
+Layer 139
+Layer 140
+Layer 141
+Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 142
+Layer 143
+Conv2d(512, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 144
+Conv2d(256, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(512, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 145
+Conv2d(512, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 146
+Conv2d(256, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(512, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 147
+Conv2d(512, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(256, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 148
+Conv2d(256, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(512, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 149
+Conv2d(512, 42, kernel_size=(1, 1), stride=(1, 1))
+Layer 150
+Layer 151
+Layer 152
+Conv2d(256, 512, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False)
+BatchNorm2d(512, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 153
+Layer 154
+Conv2d(1024, 512, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(512, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 155
+Conv2d(512, 48, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(48, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 156
+Conv2d(48, 512, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(512, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 157
+Conv2d(512, 45, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(45, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 158
+Conv2d(45, 512, kernel_size=(1, 1), stride=(1, 1), bias=False)
+BatchNorm2d(512, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 159
+Conv2d(512, 41, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+BatchNorm2d(41, eps=0.0001, momentum=0.03, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.1, inplace=True)
+Layer 160
+Conv2d(41, 42, kernel_size=(1, 1), stride=(1, 1))
+Layer 161
