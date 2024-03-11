@@ -4,8 +4,10 @@ import json
 import torch
 import numpy as np
 from varname import nameof
+import pandas as pd
 from torch.utils.tensorboard import SummaryWriter
 
+from utils.LR_utils import denormalize, list2FloatTensor
 
 class RLLogger():
 
@@ -19,17 +21,26 @@ class RLLogger():
         if not os.path.exists(self.log_dir): os.mkdir(self.log_dir)
 
     def log_settings(self, opt, settings_dict: dict):
-        path = os.path.join(self.log_dir, "settings.txt")
+        path = os.path.join(self.log_dir, "RL_spec_settings.txt")
         with open(path, 'a+') as file:
             json.dump(opt.__dict__, file, indent=2)
             file.write("\n")
             file.write(json.dumps(settings_dict))
 
-    def log_results(self, results_dir, episode, critic_loss, actor_loss, reward):
+    def log_results(self, episode, critic_loss, actor_loss, reward):
         # path = os.path.join(results_dir, self.test_case)
         path = os.path.join(self.log_dir, "results.txt")
         with open(path, 'a+') as f:
             f.write(str(episode) + " " + str(critic_loss) + " " + str(actor_loss) + " " + str(reward) + "\n")
+
+    def log_bests(self, episode, error, spars, actions):
+        path = os.path.join(self.log_dir, "best_results.txt")
+        with open(path, 'a+') as f:
+            f.write(str(episode) + " " + str(error) + " " + str(spars) + "\n")
+
+        path = os.path.join(self.log_dir, "best_actions.txt")
+        with open(path, 'a+') as f:
+            f.write(str(episode) + " " + str(actions) + "\n")
 
     def log_learning_rate(self, episode, lr_sched):
         learning_rate = lr_sched.get_lr()[0]
@@ -62,6 +73,29 @@ class RLLogger():
 
             f.write(str(variable) + "\n")
 
+    def save_action_csv(self, episode, actions, errors, states):
+        """Save all the alpha sequences and their corresponding error and sparsity values in a .csv file.
+        """
+        path = os.path.join(self.log_dir, f"actions_{episode}.csv")
+
+        alphas_df = pd.DataFrame(np.around(denormalize(actions[-1][:, 0, :].detach(), 0, 2.2), 2))
+        spars_df = pd.DataFrame(np.around(denormalize(states[-1][:, -1, -1].detach(), 0, 1), 3), columns=["spars"])
+        error_df = pd.DataFrame(np.around(denormalize(list2FloatTensor(errors)[-1, :, 0], 0, 1).detach(), 3), columns=["error"])
+
+        merged_df = pd.concat([alphas_df, spars_df, error_df], axis=1)
+        merged_df.to_csv(path)
+
+
+    def log_best_samples(self, samples, episode):
+        """
+        :param sample_df (list):
+        """
+        path = os.path.join(self.log_dir, "top_samples.txt")
+        testtosave = [f"{elem}\t" for elem in samples]
+        with open(path, "a+") as f:
+            f.write(sample + "\n")
+
+
 class TensorboardLogger():
     def __init__(self, log_dir, test_case):
         super().__init__()
@@ -76,6 +110,11 @@ class TensorboardLogger():
         self.tb_writer.add_scalar(tags[0], critic_loss, episode)
         self.tb_writer.add_scalar(tags[1], actor_loss, episode)
         self.tb_writer.add_scalar(tags[2], reward, episode)
+
+    def log_bests(self, episode, error, spars):
+        tags = ['bests/error', 'bests/spars']
+        self.tb_writer.add_scalar(tags[0], error, episode)
+        self.tb_writer.add_scalar(tags[1], spars, episode)
 
     def log_probs(self, probs, episode, layer_cnt):
         """

@@ -86,7 +86,7 @@ def choose_channels_to_prune(layer, layer_idx, alpha, dim):
         # indexes.pop(c)
         indices = indices[1:]
 
-    if alpha != 0: print("len(indexes) ", len(indices), layer, layer_idx, alpha, dim)
+    # if alpha != 0: print("len(indexes) ", len(indices), layer, layer_idx, alpha, dim)
 
     return indices.squeeze(dim=1).tolist()
 
@@ -143,7 +143,7 @@ def prune_network(network, detection_layers, layer_to_prune, alpha_seq=None, sta
 
                     if global_filewrite: f.write("Pruning layer " + str(i) + " " + str(layer) + "\n")
 
-                    if isinstance(layer, nn.Conv2d): # and glob_dims[i] == 0: # only if testing old 44 long alpha_seqs
+                    if isinstance(layer, nn.Conv2d): # and glob_dims[i] == 0: #todo only if testing old 44 long alpha_seqs
 
                         #alpha = float(torch.round(alpha_seq[layer_cnt]).item()) ## BUG !!!!
                         if state_size_check: alpha = 0
@@ -233,8 +233,7 @@ if __name__ == '__main__':
         df_path = pdata['allsamples']
 
 
-    alphas = np.arange(0.0, 2.3, 0.1).tolist()
-    alphas = [float("{:.2f}".format(x)) for x in alphas]
+    alphas = [0.0, 0.1, 1.0, 2.2]
 
     glob_dims = [0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,
                  1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1,
@@ -257,7 +256,7 @@ if __name__ == '__main__':
         create_dataloader(val_img_path, val_label_path, imgsz, opt.batch_size, 32, opt, hyp=None, augment=False,
                           cache=False, rect=False)[0]
     # Load model
-    model = Darknet(opt.cfg).to('cuda')
+    model = Darknet(opt.cfg).to(opt.device)
     ckpt = torch.load(opt.weights)
     ckpt['model'] = {k: v for k, v in ckpt['model'].items() if model.state_dict()[k].numel() == v.numel()}
     model.load_state_dict(ckpt['model'], strict=False)
@@ -296,7 +295,7 @@ if __name__ == '__main__':
         sigma = 0.4
         unsorted_probs = generate_gaussian_probs(mu, sigma, len(alphas))
 
-        model_init = Darknet(opt.cfg).to('cuda')
+        model_init = Darknet(opt.cfg).to(opt.device)
         ckpt = torch.load(opt.weights)
         ckpt['model'] = {k: v for k, v in ckpt['model'].items() if model_init.state_dict()[k].numel() == v.numel()}
         model_init.load_state_dict(ckpt['model'], strict=False)
@@ -309,7 +308,7 @@ if __name__ == '__main__':
 
             start_time = time.time()
 
-            model = Darknet(opt.cfg).to('cuda')
+            model = Darknet(opt.cfg).to(opt.device)
             model.load_state_dict(ckpt['model'], strict=False)
 
             # Load the dataframe containing the already existing samples
@@ -332,13 +331,12 @@ if __name__ == '__main__':
 
             # Generate random alpha instances
             probs = sort_gaussian_probs(unsorted_probs, len(alphas), layer_index, network_size)
-            print(f"probs: {len(probs)}, alphas: {len(alphas)}, {layer_index}, {network_size}")
+            #print(f"probs: {len(probs)}, alphas: {len(alphas)}, {layer_index}, {network_size}")
             alpha = sorted(random.choices(alphas, weights=probs, k=num_samples))[0]
 
             skip = random.choice([1, 2, 3, 4, 5, 6])
 
-
-
+            """
             if layer_index in [11, 24, 55]:
                 while alpha > 0.2:
                     alpha = sorted(random.choices(alphas, weights=probs, k=num_samples))[0]
@@ -363,24 +361,15 @@ if __name__ == '__main__':
             """
 
 
-            if layer_index > 80:
-                while alpha < 1.5:
-                    alpha = sorted(random.choices(alphas, weights=probs, k=num_samples))[0]
-            else:
-                alpha = 0.0
-            """
-
-
-
             state[row_cnt, 0] = normalize(alpha, 0, 2.2)
             alpha_seq[row_cnt] = alpha
             # alpha_seq = state[:, 0].to('cuda') ## BUG! This has to be unnormalized!!
 
             print(alpha_seq)
             model, parser = prune_network(model, opt.layers_to_skip, layer_index, alpha_seq, dataset_make=True)
-            model.to('cuda')
-            with open(f"/home/blanka/ERLPruning/sandbox/stupidmodel{layer_index}.txt", "w") as f:
-                f.write(str(model))
+            model.to(opt.device)
+            #with open(f"/home/blanka/ERLPruning/sandbox/stupidmodel{layer_index}.txt", "w") as f:
+            #    f.write(str(model))
 
             state[row_cnt, 1] = normalize(parser['in_ch'], 0, 1024)
             state[row_cnt, 2] = normalize(parser['out_ch'], 0, 1024)

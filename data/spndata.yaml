@@ -1,12 +1,12 @@
-all_state: /data/blanka/DATASETS/SPN/all5/states
-train_state: /data/blanka/DATASETS/SPN/training52/states
-val_state: /data/blanka/DATASETS/SPN/validation52/states
-test_state: /data/blanka/DATASETS/SPN/testing52/states
+all_state: /nas/blanka_phd/DATASETS/SPN/COCO/all/states
+train_state: /nas/blanka_phd/DATASETS/SPN/COCO/training/states
+val_state: /nas/blanka_phd/DATASETS/SPN/COCO/validation/states
+test_state: /nas/blanka_phd/DATASETS/SPN/COCO/validation/states
 
 
-all_label: /data/blanka/DATASETS/SPN/all5/labels
-train_label: /data/blanka/DATASETS/SPN/training52/labels
-val_label:  /data/blanka/DATASETS/SPN/validation52/labels
-test_label:  /data/blanka/DATASETS/SPN/testing52/labels
+all_label: /nas/blanka_phd/DATASETS/SPN/COCO/all/labels
+train_label: /nas/blanka_phd/DATASETS/SPN/COCO/training/labels
+val_label:  /nas/blanka_phd/DATASETS/SPN/COCO/validation/labels
+test_label:  /nas/blanka_phd/DATASETS/SPN/COCO/validation/labels
 
-allsamples: /data/blanka/DATASETS/SPN/samples5.pkl
+allsamples: /nas/blanka_phd/DATASETS/SPN/COCO/samples.pkl
