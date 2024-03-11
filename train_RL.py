@@ -37,9 +37,9 @@ if __name__ == '__main__':
 
     
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', default="rl_agent")
+    parser.add_argument('task', default="rl_agent")
     parser.add_argument('--device', type=str, default='')
-    parser.add_argument('--test-case', type=str, default='old_with_reduced_action_space_02')
+    parser.add_argument('--test-case', type=str, default='')
 
     # Flags
     parser.add_argument('--variable_logflag', type=bool, default=True)
@@ -228,11 +228,13 @@ if __name__ == '__main__':
                 ## error = error.detach()
                 ## sparsity = sparsity.detach()
 
-                #reward = eval(opt.reward_func)(denormalize(error, 0, 1), opt.target_error, denormalize(sparsity, 0, 1),
-                #                               opt.target_spars, opt.err_coef, opt.spars_coef, opt.device, opt.beta)  # reward_function_proposed
-                
-                reward = eval(opt.reward_func)(denormalize(error, 0, 1), opt.Tmap, denormalize(sparsity, 0, 1),
-                                               opt.Tspars, opt.map_before, opt.device, opt.beta)  # reward_function_purl
+
+                if conf.reward.type == 'proposed':
+                    reward = reward_function_proposed(denormalize(error, 0, 1), conf.reward.target_error, denormalize(sparsity, 0, 1),
+                                            conf.reward.target_spars, conf.reward.err_coef, conf.reward.spars_coef, device, conf.reward.beta)  # reward_function_proposed
+                elif conf.reward.type == 'purl':
+                    reward = reward_function_purl(denormalize(error, 0, 1), conf.reward.Tmap, denormalize(sparsity, 0, 1),
+                                                conf.reward.Tspars, conf.reward.map_before, device, conf.reward.beta)  # reward_function_purl
 
                 reward = reward.unsqueeze(1)
                 ## rewards_list.append(reward)
