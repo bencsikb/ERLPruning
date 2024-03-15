@@ -77,14 +77,20 @@ if __name__ == '__main__':
     spn.eval()
 
     # Define alpha values
-    #alphas = np.arange(0.0, 2.3, 0.1).tolist()
-    #alphas = [float("{:.2f}".format(x)) for x in alphas]
-    alphas = conf.prune.alphas
+    if conf.prune.alphas is not None:
+        alphas = conf.prune.alphas
+    else:
+        alphas = np.arange(0.0, 2.3, 0.1).tolist()
+        alphas = [float("{:.2f}".format(x)) for x in alphas]
+
+    # Set feature vector size
+    if conf.state.ext_state: n_features = 7
+    else: n_features = 6
 
     # Initialize actor and critic networks
 
     if len(conf.models.rl_pretrained):
-        ckpt = torch.load(opt.pretrained)
+        ckpt = torch.load(conf.models.rl_pretrained)
         actorNet = ckpt['actor_model']
         print(actorNet)
         criticNet = ckpt['critic_model']
@@ -110,9 +116,9 @@ if __name__ == '__main__':
     else:
         print("new model")
 
-        actorNet = actorNet2(conf.prune.n_prunable_layers * 7, len(alphas)).to(device)
+        actorNet = actorNet2(conf.prune.n_prunable_layers * n_features, len(alphas)).to(device)
         #actorNet.apply(init_weights)
-        criticNet = criticNet(conf.prune.n_prunable_layers * 7, 1).to(device)
+        criticNet = criticNet(conf.prune.n_prunable_layers * n_features, 1).to(device)
         if conf.a2c.optim == 'adam':
             actor_optimizer = torch.optim.Adam(actorNet.parameters(), lr=conf.a2c.actor_base_lr)
             critic_optimizer = torch.optim.Adam(criticNet.parameters(), lr=conf.a2c.critic_base_lr)
@@ -157,8 +163,6 @@ if __name__ == '__main__':
         init_param_nmb = sum([param.nelement() for param in net_for_pruning.parameters()])
 
         action_seq = torch.full([conf.train.batch_size, 1, conf.prune.n_prunable_layers], -1.0)
-        if conf.state.ext_state: n_features = 7
-        else: n_features = 6
         state_seq = torch.full([conf.train.batch_size, n_features, conf.prune.n_prunable_layers], -1.0)
 
         actions = []
