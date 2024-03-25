@@ -18,7 +18,7 @@ from models.models import *
 from utils.LR_utils import normalize, denormalize, get_state, get_state2, get_prunable_layers_yolov4, get_layers_forpruning, list2FloatTensor, \
     test_alpha_seq
 from models.LR_models import actorNet, criticNet, actorNet2, init_weights
-from utils.RL_rewards import reward_function_proposed, reward_function_purl
+from utils.RL_rewards import reward_function_proposed, reward_function_purl, reward_function_amc
 from models.error_pred_network import errorNet
 from utils.LR_losses import CriticLoss, ActorLoss, ActorPPOLoss, get_discounted_reward, get_advantage, \
     get_discounted_reward
@@ -141,7 +141,6 @@ if __name__ == '__main__':
 
     # Get layer indicies that can be pruned
     layers_for_pruning = get_layers_forpruning(net_for_pruning, conf.prune.layers_to_skip)
-    print(f"{len(layers_for_pruning) = }")
 
 
     # Log settings
@@ -237,8 +236,11 @@ if __name__ == '__main__':
                     reward = reward_function_proposed(denormalize(error, 0, 1), conf.reward.target_error, denormalize(sparsity, 0, 1),
                                             conf.reward.target_spars, conf.reward.err_coef, conf.reward.spars_coef, device, conf.reward.beta)  # reward_function_proposed
                 elif conf.reward.type == 'purl':
-                    reward = reward_function_purl(denormalize(error, 0, 1), conf.reward.Tmap, denormalize(sparsity, 0, 1),
-                                                conf.reward.Tspars, conf.reward.map_before, device, conf.reward.beta)  # reward_function_purl
+                    reward = reward_function_purl(denormalize(error, 0, 1), conf.reward.tmap, denormalize(sparsity, 0, 1),
+                                                conf.reward.tspars, conf.reward.map_before, device, conf.reward.beta)  # reward_function_purl
+                
+                elif conf.reward.type == 'amc':
+                    reward = reward_function_amc(denormalize(error, 0, 1), denormalize(sparsity, 0, 1), device) 
 
                 reward = reward.unsqueeze(1)
                 ## rewards_list.append(reward)
