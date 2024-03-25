@@ -7,7 +7,8 @@ from varname import nameof
 import pandas as pd
 from torch.utils.tensorboard import SummaryWriter
 
-from utils.LR_utils import denormalize, list2FloatTensor
+from utils.common_utils import denormalize
+from utils.RL_utils import list2FloatTensor
 
 class RLLogger():
 

@@ -5,7 +5,7 @@ import random
 import numpy as np
 import math
 
-from utils.LR_utils import list2FloatTensor
+from utils.RL_utils import list2FloatTensor
 
 def get_discounted_reward(rewards, values, gamma):
 

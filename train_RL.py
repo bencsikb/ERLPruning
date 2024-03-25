@@ -16,7 +16,7 @@ from varname import nameof
 
 from models.models import *
 from utils.common_utils import normalize, denormalize
-from utils.LR_utils import get_state, get_state2, get_prunable_layers_yolov4, get_layers_forpruning, list2FloatTensor, \
+from utils.RL_utils import get_state, get_state2, get_prunable_layers_yolov4, get_layers_forpruning, list2FloatTensor, \
     test_alpha_seq
 from models.LR_models import actorNet, criticNet, actorNet2, init_weights
 from utils.RL_rewards import reward_function_proposed, reward_function_purl, reward_function_amc
