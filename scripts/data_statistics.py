@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from utils.spn_utils import denormalize
+from utils.common_utils import denormalize
 
 def create_hist(data, bins,  title, xlabel, ylabel):
     """

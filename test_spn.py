@@ -11,7 +11,8 @@ import random
 import time
 import yaml
 
-from utils.spn_utils import denormalize, calc_metrics
+from utils.common_utils import denormalize
+from utils.spn_utils import calc_metrics
 from utils.datasets import create_pruning_dataloader
 from utils.general import optimizer_to, scheduler_to
 from utils.config_parser import ConfigParser

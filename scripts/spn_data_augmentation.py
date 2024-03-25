@@ -4,7 +4,7 @@ import numpy as np
 import yaml
 import torch
 
-from utils.LR_utils import normalize, denormalize
+from utils.common_utils import normalize, denormalize
 from utils.spn_utils import calc_metrics
 from utils.datasets import create_pruning_dataloader
 

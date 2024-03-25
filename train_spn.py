@@ -14,7 +14,8 @@ import yaml
 from torch.utils.tensorboard import SummaryWriter
 
 from utils.datasets import create_pruning_dataloader
-from utils.spn_utils import denormalize, calc_metrics
+from utils.common_utils import denormalize
+from utils.spn_utils import calc_metrics
 from utils.config_parser import ConfigParser
 from models.error_pred_network import errorNet, errorNet2
 import torch.utils.data
