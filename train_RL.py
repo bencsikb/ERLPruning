@@ -30,11 +30,18 @@ from utils.torch_utils import init_seeds
 from utils.optimizers import RAdam, Lamb
 from utils.config_parser import ConfigParser
 
+from utils.logger import BasicLogger
+from utils.torch_utils import init_seeds
+from utils.optimizers import RAdam, Lamb
+from utils.config_parser import ConfigParser
+
 
 
 timefile = "/home/blanka/YOLOv4_Pruning/sandbox/time_measure_pruning3.txt"
 
 if __name__ == '__main__':
+
+    
 
     
     parser = argparse.ArgumentParser()
@@ -57,6 +64,12 @@ if __name__ == '__main__':
     else:
         device = conf.train.device
 
+    conf = ConfigParser.prepare_conf(opt)
+    if len(opt.device):
+        device = opt.device
+    else:
+        device = conf.train.device
+
     torch.autograd.set_detect_anomaly(True)
     init_seeds(42)
 
@@ -64,8 +77,13 @@ if __name__ == '__main__':
     rl_logger = RLLogger(log_dir=os.path.join(conf.paths.log_dir, conf.logging.folder), test_case=opt.test_case)
     tb_logger = TensorboardLogger(log_dir=os.path.join(conf.paths.log_dir, conf.logging.folder), test_case=opt.test_case)
     txt_logger = BasicLogger(log_dir=os.path.join(conf.paths.log_dir, conf.logging.folder), test_case=opt.test_case)
+    rl_logger = RLLogger(log_dir=os.path.join(conf.paths.log_dir, conf.logging.folder), test_case=opt.test_case)
+    tb_logger = TensorboardLogger(log_dir=os.path.join(conf.paths.log_dir, conf.logging.folder), test_case=opt.test_case)
+    txt_logger = BasicLogger(log_dir=os.path.join(conf.paths.log_dir, conf.logging.folder), test_case=opt.test_case)
 
     # Load pretrained nets
+    net_for_pruning = Darknet(conf.models.cfg_to_prune).to(device)
+    ckpt_nfp = torch.load(conf.models.to_prune, map_location=device)
     net_for_pruning = Darknet(conf.models.cfg_to_prune).to(device)
     ckpt_nfp = torch.load(conf.models.to_prune, map_location=device)
     state_dict = {k: v for k, v in ckpt_nfp['model'].items() if net_for_pruning.state_dict()[k].numel() == v.numel()}
@@ -73,6 +91,7 @@ if __name__ == '__main__':
     network_size = len(net_for_pruning.module_list)
 
     # Load pretrained SPN
+    ckpt_spn = torch.load(conf.models.spn, map_location=device)
     ckpt_spn = torch.load(conf.models.spn, map_location=device)
     spn = ckpt_spn['model']
     spn.eval()
@@ -107,6 +126,9 @@ if __name__ == '__main__':
                 g['lr'] = conf.a2c.actor_base_lr
             lr_sched = torch.optim.lr_scheduler.CosineAnnealingLR(actor_optimizer, T_max=conf.train.episodes,
                                                                   eta_min=conf.a2c.actor_last_lr,
+                g['lr'] = conf.a2c.actor_base_lr
+            lr_sched = torch.optim.lr_scheduler.CosineAnnealingLR(actor_optimizer, T_max=conf.train.episodes,
+                                                                  eta_min=conf.a2c.actor_last_lr,
                                                                   last_epoch=episode)
             lr_sched.step()
 
@@ -133,6 +155,8 @@ if __name__ == '__main__':
         # Define loss functions
         critic_criterion = CriticLoss().to(device)
         actor_criterion = ActorLoss().to(device)
+        critic_criterion = CriticLoss().to(device)
+        actor_criterion = ActorLoss().to(device)
         episode = 0
 
     # Print the number of params od actor and critic nets
@@ -150,6 +174,10 @@ if __name__ == '__main__':
                      "critic_lr": critic_optimizer.param_groups[0]['lr'],
                      "actor_lr_sched": lr_sched.get_lr()[0]
                      }
+    ConfigParser.save(conf, os.path.join(conf.paths.log_dir, conf.logging.folder, conf.dynamic.test_case, conf.logging.log_folder, "settings.txt"))
+    
+
+    while episode < conf.train.episodes:
     ConfigParser.save(conf, os.path.join(conf.paths.log_dir, conf.logging.folder, conf.dynamic.test_case, conf.logging.log_folder, "settings.txt"))
     
 
@@ -179,9 +207,12 @@ if __name__ == '__main__':
         layer_cnt = 0
         sparsity_prev = torch.full([conf.train.batch_size], -1.0)
         error_prev = torch.full([conf.train.batch_size], -1.0)
+        sparsity_prev = torch.full([conf.train.batch_size], -1.0)
+        error_prev = torch.full([conf.train.batch_size], -1.0)
 
         for layer_i in range(network_size):
 
+            if layer_i in layers_for_pruning:  
             if layer_i in layers_for_pruning:  
                 # print("Pruning layer ", layer_cnt, layer_i)
                 sequential_size = len(net_for_pruning.module_list[layer_i])
@@ -192,7 +223,9 @@ if __name__ == '__main__':
                 # Get state
                 # state_seq = Variable(get_state2(state_seq, sparsity_prev, layer, layer_cnt), requires_grad=True)
                 state_seq = get_state2(state_seq, sparsity_prev, error_prev, layer, layer_cnt)
+                state_seq = get_state2(state_seq, sparsity_prev, error_prev, layer, layer_cnt)
 
+                data = state_seq.view([conf.train.batch_size, -1]).type(torch.float32).to(device)
                 data = state_seq.view([conf.train.batch_size, -1]).type(torch.float32).to(device)
 
                 print(f"data in main {data.shape}")
@@ -211,17 +244,22 @@ if __name__ == '__main__':
 
                 # Log probs for the first and last layer
                 if layer_cnt == 0 or layer_cnt == conf.prune.n_prunable_layers - 1:
+                if layer_cnt == 0 or layer_cnt == conf.prune.n_prunable_layers - 1:
                     rl_logger.log_probs(probs, episode, layer_cnt)
                     tb_logger.log_probs_merged(probs, episode, layer_cnt)
 
                 tb_logger.log_probs(probs, episode, layer_cnt)
 
                 for i in range(conf.train.batch_size):
+                for i in range(conf.train.batch_size):
                     action_seq[i, :, layer_cnt] = normalize(alphas[action[i]], 0.0, 2.2)
 
                 print(denormalize(action_seq[0, :, :], 0.0, 2.2))
 
                 # Get the error for every sample in the batch
+                spn_input_data = torch.cat((action_seq, state_seq[:, -1, :].unsqueeze(1)), dim=1).view(
+                        [conf.train.batch_size, -1]).type(torch.float32).to(device)
+                prediction = spn(spn_input_data)
                 spn_input_data = torch.cat((action_seq, state_seq[:, -1, :].unsqueeze(1)), dim=1).view(
                         [conf.train.batch_size, -1]).type(torch.float32).to(device)
                 prediction = spn(spn_input_data)
@@ -270,6 +308,7 @@ if __name__ == '__main__':
                 ## list2FloatTensor(entropies)
                 actions.append(action_seq.clone().detach())
                 states.append(state_seq.clone().detach())
+                states.append(state_seq.clone().detach())
                 # rewards.append(denormalize(reward, 0, 1))
                 # values.append(denormalize(q_value, 0, 1))
                 rewards.append(reward)  # .detach())
@@ -289,8 +328,26 @@ if __name__ == '__main__':
                            list2FloatTensor(rewards_list)[-1, :, 0],
                            denormalize(actions[-1][:, 0, :], 0, 2.2),
                            conf.prune.layers_to_skip,
+                           conf.prune.layers_to_skip,
                            test_case="test_58_d_2700",
                            error_thresh=None, spars_thresh=None, reward_thresh=-5)
+            
+        
+        	
+        # Get the best result from the batch
+        print(len(states))
+        print(denormalize(states[-1][:, -1, -1], 0, 1).shape)
+        print(denormalize(actions[-1][:, :, :], 0, 2.2).shape)
+
+        #print(denormalize(list2FloatTensor(errors)[-1, :, :], 0, -1).shape)
+        #print(denormalize(states[-1][:, -1, -1], 0, 1).shape)
+        #print(denormalize(actions[-1][:, :, :], 0, 2.2).shape)
+
+        bidx = denormalize(list2FloatTensor(errors)[-1, :, 0], 0, 1).argmin() # [n_prunableLayers, batch_size, 1]
+        best_error = denormalize(list2FloatTensor(errors)[-1, bidx, 0], 0, 1).item()
+        best_spars = denormalize(states[-1][bidx, -1, -1], 0, 1).item()
+        best_alpha_seq = denormalize(actions[-1][bidx, 0, :], 0, 2.2)
+
             
         
         	
@@ -324,6 +381,10 @@ if __name__ == '__main__':
 
         # Loss backwards here
         critic_loss = critic_criterion(list2FloatTensor(rewards), list2FloatTensor(values), 0.99)
+        # critic_loss.backward(retain_graph=True)      
+        actor_loss = actor_criterion(list2FloatTensor(rewards), list2FloatTensor(values),
+                                        list2FloatTensor(policies), list2FloatTensor(log_probs),
+                                        list2FloatTensor(entropies), ent_coef=conf.a2c.ent_coef, gamma=0.99)
         # critic_loss.backward(retain_graph=True)      
         actor_loss = actor_criterion(list2FloatTensor(rewards), list2FloatTensor(values),
                                         list2FloatTensor(policies), list2FloatTensor(log_probs),
@@ -376,11 +437,15 @@ if __name__ == '__main__':
 
         # Save parameters
         rl_logger.log_results(episode, critic_loss.item(), actor_loss.item(),
+        rl_logger.log_results(episode, critic_loss.item(), actor_loss.item(),
                               list2FloatTensor(rewards).mean().item())
         rl_logger.log_learning_rate(episode, lr_sched)
         rl_logger.log_bests(episode, best_error, best_spars, best_alpha_seq)
+        rl_logger.log_bests(episode, best_error, best_spars, best_alpha_seq)
         tb_logger.log_results(episode, critic_loss.item(), actor_loss.item(), list2FloatTensor(rewards).mean().item())
         tb_logger.log_learning_rate(episode, lr_sched)
+        tb_logger.log_bests(episode, best_error, best_spars)
+
         tb_logger.log_bests(episode, best_error, best_spars)
 
         # Save checkpoint
@@ -396,6 +461,11 @@ if __name__ == '__main__':
                       }
 
         # Save the checkpoint with episode
+        if episode % conf.train.save_interval == 0:
+            ckp_save_path = os.path.join(conf.paths.log_dir, conf.logging.folder, opt.test_case)
+            torch.save(checkpoint, os.path.join(ckp_save_path, f"{episode}.pth"))
+            rl_logger.save_action_csv(episode, actions, errors, states)
+
         if episode % conf.train.save_interval == 0:
             ckp_save_path = os.path.join(conf.paths.log_dir, conf.logging.folder, opt.test_case)
             torch.save(checkpoint, os.path.join(ckp_save_path, f"{episode}.pth"))
