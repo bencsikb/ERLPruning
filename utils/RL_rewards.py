@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import math
 
 def reward_function_proposed(dmap, Tdmap, spars, Tspars, dmap_coeff, spars_coeff, device, beta=5):
     """
@@ -33,6 +34,16 @@ def reward_function_purl(dmap, Tmap, spars, Tspars, map_before, device, beta=5):
 
     zerotens = torch.zeros(dmap.shape).to(device)
     reward = - beta* (torch.max( 1-map_after/Tmap, zerotens) + torch.max( 1 - spars/Tspars, zerotens))
+
+    return reward
+
+
+def reward_function_amc(dmap, spars, device, init_params=63980766):
+    """
+    :return: reward
+    """
+
+    reward = - dmap * torch.log((spars + 5e-10) * init_params)
 
     return reward
 
