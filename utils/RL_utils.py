@@ -12,29 +12,7 @@ import sys
 
 from prune_for_error import *
 from test import *
-
-def denormalize(x, x_min, x_max):
-    # Denormalize ground truth and predicted error
-
-    if torch.is_tensor(x):
-        ret = ((x + 1) * (x_max - x_min)) / 2 + x_min
-    #elif len(x):
-    #    ret = [((xi + 1) * (x_max - x_min)) / 2 + x_min for xi in x]
-    else:
-        x = float(x)
-        ret = ((x + 1) * (x_max - x_min)) / 2 + x_min
-
-    return ret
-
-
-def normalize(x, x_min, x_max):
-    # Between -1 and 1
-    if torch.is_tensor(x):
-        x = torch.FloatTensor(x)
-    else:
-        x = float(x)
-    x = 2 * ((x - x_min) / (x_max - x_min)) - 1
-    return x
+from utils.common_utils import normalize, denormalize
 
 
 def get_state(prev_state, action_seq, network_seq, layer, layer_index, layer_cnt, init_param_nmb, yolo_layers,

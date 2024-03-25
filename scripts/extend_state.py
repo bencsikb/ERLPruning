@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from utils.LR_utils import denormalize
+from utils.common_utils import denormalize
 
 """ To run without import issues, move this file to the root folder. """
 

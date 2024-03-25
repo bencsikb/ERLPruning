@@ -4,7 +4,9 @@ from utils.general import *
 
 import torch
 from torch import nn
+import sys
 
+sys.path.insert(1, '../Mish/Mish/Torch/')
 from mish_cuda import MishCuda as Mish
 
 

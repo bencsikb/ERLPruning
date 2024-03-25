@@ -1,25 +1,52 @@
 import torch
 import numpy as np
+import math
 
-def reward_function(A, Ta, S, Ts, err_coeff, spars_coeff, device, beta=5):
+def reward_function_proposed(dmap, Tdmap, spars, Tspars, dmap_coeff, spars_coeff, device, beta=5):
     """
-    :param A: accuracy deterioration (error)
-    :param Ta: desired accuracy deterioration (maximal)
-    :param S: sparsity (percent of pruned parameters
-    :param Ts: desired sparsity
+    :param dmap: mAP deterioration (error)
+    :param Tdmap: desired mAP deterioration (maximal)
+    :param spars: sparsity (percent of pruned parameters
+    :param Tspars: desired sparsity
     :return: reward
     """
-    baseline = 100
-    baseline_tens = torch.full(A.shape, baseline, dtype=torch.float32)
 
-    zerotens = torch.zeros(A.shape).to(device)
-    #reward = baseline_tens - beta* (torch.max( (A-Ta)/(1-Ta), zerotens) + torch.max( 1 - S/Ts, zerotens))
-    reward = - beta* (err_coeff*torch.max( (A-Ta)/(1-Ta), zerotens) + spars_coeff*torch.max( 1 - S/Ts, zerotens))
+    print(Tdmap)
 
-    #print("A", A)
-    #print("S", A-Ta)
-    #print(torch.max( (A-Ta)/(1-Ta), zerotens))
+    zerotens = torch.zeros(dmap.shape).to(device)
+    reward = - beta* (dmap_coeff*torch.max( (dmap-Tdmap)/(1-Tdmap), zerotens) + spars_coeff*torch.max( 1 - spars/Tspars, zerotens))
+
     return reward
+
+
+def reward_function_purl(dmap, Tmap, spars, Tspars, map_before, device, beta=5):
+    """
+    :param dmap: mAP deterioration (error)
+    :param Tmap: desired final mAP (after pruning)
+    :param spars: sparsity (percent of pruned parameters
+    :param Tspars: desired sparsity
+    :return: reward
+    """
+
+    # Compute the mAP value after pruning from dmap 
+    onestens = torch.ones(dmap.shape).to(device)
+    map_after = (1 - dmap) * map_before
+
+    zerotens = torch.zeros(dmap.shape).to(device)
+    reward = - beta* (torch.max( 1-map_after/Tmap, zerotens) + torch.max( 1 - spars/Tspars, zerotens))
+
+    return reward
+
+
+def reward_function_amc(dmap, spars, device, init_params=63980766):
+    """
+    :return: reward
+    """
+
+    reward = - dmap * torch.log((spars + 5e-10) * init_params)
+
+    return reward
+
 
 def reward_function2(params, error, sparsity, baseline):
 
