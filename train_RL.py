@@ -20,7 +20,7 @@ from utils.LR_utils import normalize, denormalize, get_state, get_state2, get_pr
 from models.LR_models import actorNet, criticNet, actorNet2, init_weights
 from utils.RL_rewards import reward_function_proposed, reward_function_purl, reward_function_amc
 from models.error_pred_network import errorNet
-from utils.LR_losses import CriticLoss, ActorLoss, ActorPPOLoss, get_discounted_reward, get_advantage, \
+from utils.RL_losses import CriticLoss, ActorLoss, ActorPPOLoss, get_discounted_reward, get_advantage, \
     get_discounted_reward
 # from utils.state_tester import get_fix_state
 from utils.RL_logger import RLLogger, TensorboardLogger
